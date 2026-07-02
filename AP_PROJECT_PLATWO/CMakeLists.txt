@@ -7,10 +7,19 @@ qt_standard_project_setup()
 
 qt_add_executable(AP_PROJECT_PLATWO
     WIN32 MACOSX_BUNDLE
+
     main.cpp
-    mainwindow.cpp
-    mainwindow.h
-    mainwindow.ui
+
+    src/Ui/mainwindow.cpp
+    src/Ui/mainwindow.h
+    src/Ui/mainwindow.ui
+
+)
+
+target_include_directories(AP_PROJECT_PLATWO PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Ui
+
 )
 
 target_link_libraries(AP_PROJECT_PLATWO
