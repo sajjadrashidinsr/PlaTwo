@@ -1,0 +1,17 @@
+<RCC>
+    <qresource prefix="/">
+        <!-- Icons -->
+        <file alias="icons/logo.png">icons/logo.png</file>
+        <file alias="icons/user.png">icons/user.png</file>
+        <file alias="icons/lock.png">icons/lock.png</file>
+        <file alias="icons/eye.png">icons/eye.png</file>
+        <file alias="icons/eye_off.png">icons/eye_off.png</file>
+        <file alias="icons/email.png">icons/email.png</file>
+        <file alias="icons/changed.png">icons/change.png</file>
+        <file alias="icons/verified.png">icons/verified.png</file>
+        <!-- Images -->
+        <file alias="images/background.jpg">images/background.jpg</file>
+        <!-- Style -->
+        <file alias="qss/theme.qss">qss/theme.qss</file>
+    </qresource>
+</RCC>
