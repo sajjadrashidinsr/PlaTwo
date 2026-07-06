@@ -386,7 +386,33 @@
                   <item>
                    <widget class="QLabel" name="label_3">
                     <property name="text">
-                     <string>Enter your phone number to Verify your Account.</string>
+                     <string>Enter your username and phone number to Verify your Account.</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_username">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <bold>true</bold>
+                     </font>
+                    </property>
+                    <property name="text">
+                     <string>Useranme</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="lineEdit_username">
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>40</height>
+                     </size>
+                    </property>
+                    <property name="placeholderText">
+                     <string>Enter your Username</string>
                     </property>
                    </widget>
                   </item>
@@ -423,6 +449,19 @@
                    </widget>
                   </item>
                   <item>
+                   <spacer name="verticalSpacer_6">
+                    <property name="orientation">
+                     <enum>Qt::Orientation::Vertical</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>20</width>
+                      <height>40</height>
+                     </size>
+                    </property>
+                   </spacer>
+                  </item>
+                  <item>
                    <widget class="QPushButton" name="pushButton_verify">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -433,7 +472,7 @@
                     <property name="minimumSize">
                      <size>
                       <width>0</width>
-                      <height>48</height>
+                      <height>40</height>
                      </size>
                     </property>
                     <property name="text">
@@ -593,6 +632,9 @@
                       <height>16777215</height>
                      </size>
                     </property>
+                    <property name="echoMode">
+                     <enum>QLineEdit::EchoMode::Password</enum>
+                    </property>
                     <property name="placeholderText">
                      <string>Enter new Password</string>
                     </property>
@@ -625,6 +667,9 @@
                       <height>16777215</height>
                      </size>
                     </property>
+                    <property name="echoMode">
+                     <enum>QLineEdit::EchoMode::Password</enum>
+                    </property>
                     <property name="placeholderText">
                      <string>Confirm new Password</string>
                     </property>
@@ -644,7 +689,7 @@
                     <property name="minimumSize">
                      <size>
                       <width>0</width>
-                      <height>48</height>
+                      <height>40</height>
                      </size>
                     </property>
                     <property name="text">
