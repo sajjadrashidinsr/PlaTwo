@@ -9,6 +9,10 @@ forgotpasspage::forgotpasspage(QWidget *parent)
 {
     ui->setupUi(this);
 
+    ui->lineEdit_username->addAction(
+        QIcon(":/icons/user.png"),
+        QLineEdit::LeadingPosition);
+
     userAction =
         ui->lineEdit_phone->addAction(
         QIcon(":/icons/user.png"),
@@ -107,7 +111,8 @@ void forgotpasspage::toggleConfirmPassword()
 
 void forgotpasspage::checkVerifyButton()
 {
-    bool ok = !ui->lineEdit_phone->text().trimmed().isEmpty();
+    bool ok = !ui->lineEdit_phone->text().trimmed().isEmpty() &&
+              !ui->lineEdit_username->text().trimmed().isEmpty();
 
     ui->pushButton_verify->setEnabled(ok);
 }

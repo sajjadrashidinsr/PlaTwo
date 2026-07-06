@@ -9,6 +9,10 @@ signuppage::signuppage(QWidget *parent)
 {
     ui->setupUi(this);
 
+    ui->lineEdit_name->addAction(
+        QIcon(":/icons/user.png"),
+        QLineEdit::LeadingPosition);
+
     ui->lineEdit_username->addAction(
         QIcon(":/icons/user.png"),
         QLineEdit::LeadingPosition);
@@ -111,6 +115,7 @@ signuppage::signuppage(QWidget *parent)
 void signuppage::updateCreateButton(){
     bool ok =
             !ui->lineEdit_username->text().trimmed().isEmpty() &&
+            !ui->lineEdit_name->text().trimmed().isEmpty()&&
             !ui->lineEdit_email->text().trimmed().isEmpty() &&
             !ui->lineEdit_password->text().trimmed().isEmpty() &&
             !ui->lineEdit_confirmpassword->text().trimmed().isEmpty() &&
