@@ -1,4 +1,6 @@
 #include "Client.h"
+#include "Packet.h"
+#include "User.h"
 
 Client::Client()
 {
@@ -37,29 +39,200 @@ bool Client::connectServer()
 
 void Client::sendMessage()
 {
-    string message;
+    User user;
 
-    cout << "Message : ";
-    getline(cin >> ws, message);
+    string temp;
 
-    send(clientSocket,
-        message.c_str(),
-        message.size(),
-        0);
+    cout << "Username : ";
+    getline(cin >> ws, temp);
+    user.setUsername(temp);
 
-    char buffer[1024];
+    cout << "Password : ";
+    getline(cin, temp);
+    user.setPasswordHash(temp);
 
-    int bytes = recv(clientSocket,
-        buffer,
-        sizeof(buffer),
-        0);
+    string packet = Packet::createLoginRequest(user);
 
-    if (bytes > 0)
+    send(
+        clientSocket,
+        packet.c_str(),
+        packet.size(),
+        0
+    );
+
+    char buffer[1025];
+
+    int bytes =
+        recv(
+            clientSocket,
+            buffer,
+            1024,
+            0
+        );
+
+    buffer[bytes] = '\0';
+
+    json response =
+        json::parse(buffer);
+
+    console.showMessage(
+        response["message"]);
+}
+
+void Client::run()
+{
+    while (true)
     {
-        buffer[bytes] = '\0';
+        switch (console.showMenu())
+        {
+        case 1:
+            login();
+            break;
 
-        cout << "Server : " << buffer << endl;
+        case 2:
+        {
+            signup();
+            break;
+        }
+
+        case 3:
+            forgotPassword();
+            break;
+
+        case 0:
+            return;
+        }
     }
+}
+
+void Client::login()
+{
+    User user = console.getLoginInformation();
+
+    json request;
+
+    request["type"] = "login";
+    request["username"] = user.getUsername();
+    request["password"] = user.getPasswordHash();
+
+    string message = request.dump();
+
+    send(
+        clientSocket,
+        message.c_str(),
+        static_cast<int>(message.size()),
+        0
+    );
+
+    char buffer[1025];
+
+    int bytes = recv(
+        clientSocket,
+        buffer,
+        1024,
+        0
+    );
+
+    if (bytes <= 0)
+    {
+        console.showMessage("Connection Lost");
+        return;
+    }
+
+    buffer[bytes] = '\0';
+
+    json response = json::parse(buffer);
+
+    console.showMessage(response["message"]);
+}
+
+void Client::signup()
+{
+    User user = console.getSignupInformation();
+
+    json request;
+
+    request["type"] = "signup";
+    request["name"] = user.getName();
+    request["username"] = user.getUsername();
+    request["password"] = user.getPasswordHash();
+    request["phone"] = user.getPhone();
+    request["email"] = user.getEmail();
+
+    string message = request.dump();
+
+    send(
+        clientSocket,
+        message.c_str(),
+        static_cast<int>(message.size()),
+        0
+    );
+
+    char buffer[1025];
+
+    int bytes = recv(
+        clientSocket,
+        buffer,
+        1024,
+        0
+    );
+
+    if (bytes <= 0)
+        return;
+
+    buffer[bytes] = '\0';
+
+    json response = json::parse(buffer);
+
+    console.showMessage(response["message"]);
+}
+
+void Client::forgotPassword()
+{
+    string phone =
+        console.getPhone();
+
+    string password =
+        console.getNewPassword();
+
+    json request;
+
+    request["type"] = "forgot";
+
+    request["phone"] = phone;
+
+    request["password"] = password;
+
+    string message =
+        request.dump();
+
+    send(
+        clientSocket,
+        message.c_str(),
+        static_cast<int>(message.size()),
+        0
+    );
+
+    char buffer[1025];
+
+    int bytes =
+        recv(
+            clientSocket,
+            buffer,
+            1024,
+            0
+        );
+
+    if (bytes <= 0)
+        return;
+
+    buffer[bytes] = '\0';
+
+    json response =
+        json::parse(buffer);
+
+    console.showMessage(
+        response["message"]);
 }
 
 Client::~Client()

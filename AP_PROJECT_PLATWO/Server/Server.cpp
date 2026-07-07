@@ -1,13 +1,25 @@
 #include "Server.h"
+#include "Packet.h"
+
 
 Server::Server()
+    : service(&database)
 {
     serverSocket = INVALID_SOCKET;
     clientSocket = INVALID_SOCKET;
+
+    processor = nullptr;
 }
 
 bool Server::initialize()
 {
+    if (!database.open("users.db"))
+        return false;
+
+    database.createTable();
+
+    processor = new RequestProcessor(&service);
+
     WSADATA wsa;
 
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
@@ -22,7 +34,7 @@ bool Server::initialize()
     serverAddress.sin_port = htons(8080);
     serverAddress.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(serverSocket,
+    if (::bind(serverSocket,
         (sockaddr*)&serverAddress,
         sizeof(serverAddress)) == SOCKET_ERROR)
         return false;
@@ -37,19 +49,32 @@ bool Server::initialize()
 
 void Server::start()
 {
-    cout << "Waiting For Client...\n";
-
-    clientSocket = accept(serverSocket, nullptr, nullptr);
-
-    if (clientSocket == INVALID_SOCKET)
+    while (true)
     {
-        cout << "Accept Failed\n";
-        return;
+        SOCKET clientSocket =
+            accept(
+                serverSocket,
+                nullptr,
+                nullptr
+            );
+
+        if (clientSocket == INVALID_SOCKET)
+            continue;
+
+        thread clientThread(
+            [this, clientSocket]()
+            {
+                ClientHandler handler(
+                    clientSocket,
+                    processor
+                );
+
+                handler.run();
+            }
+        );
+
+        clientThread.detach();
     }
-
-    cout << "Client Connected\n";
-
-    receiveMessage();
 }
 
 void Server::receiveMessage()
@@ -62,20 +87,30 @@ void Server::receiveMessage()
     {
         buffer[bytes] = '\0';
 
-        cout << "Message : " << buffer << endl;
+        string request(buffer);
 
-        string response = "Hello Client";
+        string response =
+            processor->process(request);
 
-        send(clientSocket,
+        send(
+            clientSocket,
             response.c_str(),
             response.size(),
-            0);
-    }
+            0
+        );
+
+     }
 }
 
 Server::~Server()
 {
-    closesocket(clientSocket);
-    closesocket(serverSocket);
+    delete processor;
+
+    if (clientSocket != INVALID_SOCKET)
+        closesocket(clientSocket);
+
+    if (serverSocket != INVALID_SOCKET)
+        closesocket(serverSocket);
+
     WSACleanup();
 }

@@ -5,12 +5,9 @@ int main()
     Client client;
 
     if (!client.connectServer())
-    {
-        cout << "Connection Failed\n";
         return 0;
-    }
 
-    client.sendMessage();
+    client.run();
 
     return 0;
 }

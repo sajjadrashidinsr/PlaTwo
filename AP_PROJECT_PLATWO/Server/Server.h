@@ -4,6 +4,13 @@
 #include <ws2tcpip.h>
 #include <iostream>
 
+#include "Database.h"
+#include "RequestProcessor.h"
+
+#include <thread>
+#include "ClientHandler.h"
+#include "UserService.h"    
+
 #pragma comment(lib,"ws2_32.lib")
 
 using namespace std;
@@ -17,6 +24,11 @@ private:
 
     sockaddr_in serverAddress;
 
+    Database database;
+
+    UserService service;
+
+    RequestProcessor* processor;
 public:
 
     Server();
@@ -29,3 +41,4 @@ public:
 
     ~Server();
 };
+
