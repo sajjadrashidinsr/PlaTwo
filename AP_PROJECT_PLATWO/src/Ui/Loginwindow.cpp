@@ -4,6 +4,7 @@
 #include "signuppage.h"
 #include "forgotpasspage.h"
 #include <QFile>
+#include <QMessageBox>
 
 
 Loginwindow::Loginwindow(QWidget *parent)
@@ -12,17 +13,19 @@ Loginwindow::Loginwindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    storageManager = new storage_manager();
+
     ui->stackedWidget->setCurrentWidget(ui->pageLogin);
 
-    loginPage = new LoginPage(this);
+    loginPage = new LoginPage(storageManager,this);
 
     ui->verticalLayoutPageLogin->addWidget(loginPage);
 
-    signupPage = new signuppage(this);
+    signupPage = new signuppage(storageManager,this);
 
     ui->verticalLayoutPagesignup->addWidget(signupPage);
 
-    forgotPage = new forgotpasspage(this);
+    forgotPage = new forgotpasspage(storageManager,this);
 
     ui->verticalLayoutPageforgotpass->addWidget(forgotPage);
 
@@ -41,6 +44,13 @@ Loginwindow::Loginwindow(QWidget *parent)
             {
                 ui->stackedWidget->setCurrentWidget(ui->pageLogin);
             });
+    connect(signupPage,
+            &signuppage::signUpSuccessful,
+            this,
+            [this]() {
+                ui->stackedWidget->setCurrentWidget(ui->pageLogin);
+            }
+            );
 
     connect(loginPage,
             &LoginPage::forgotPasswordClicked,
@@ -58,9 +68,30 @@ Loginwindow::Loginwindow(QWidget *parent)
                 ui->stackedWidget->setCurrentWidget(ui->pageLogin);
             });
 
+    connect(forgotPage,
+            &forgotpasspage::passwordChanged,
+            this,
+            [this]() {
+                ui->stackedWidget->setCurrentWidget(ui->pageLogin);
+            }
+            );
+
+    connect(loginPage,
+            &LoginPage::loginSuccessful,
+            this,
+            [this](user* user) {
+                QMessageBox::information(this, "login successfull ", "Welcome " + user->name + "!\n(اینجا منوی اصلی باز خواهد شد)");
+            }
+            );
 }
+
+
+
+
+
 
 Loginwindow::~Loginwindow()
 {
+    delete storageManager;
     delete ui;
 }

@@ -2,10 +2,12 @@
 #include "ui_forgotpasspage.h"
 #include <QAction>
 #include <QIcon>
+#include <QMessageBox>
 
-forgotpasspage::forgotpasspage(QWidget *parent)
+forgotpasspage::forgotpasspage(storage_manager* storage,QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::forgotpasspage)
+    , ui(new Ui::forgotpasspage),
+    Storage(storage)
 {
     ui->setupUi(this);
 
@@ -15,8 +17,8 @@ forgotpasspage::forgotpasspage(QWidget *parent)
 
     userAction =
         ui->lineEdit_phone->addAction(
-        QIcon(":/icons/user.png"),
-        QLineEdit::LeadingPosition);
+            QIcon(":/icons/user.png"),
+            QLineEdit::LeadingPosition);
 
     ui->lineEdit_newpass->addAction(
         QIcon(":/icons/lock.png"),
@@ -73,6 +75,12 @@ forgotpasspage::forgotpasspage(QWidget *parent)
             &QLineEdit::textChanged,
             this,
             &forgotpasspage::checkChangeButton);
+
+    connect(ui->pushButton_newpass,
+            &QPushButton::clicked,
+            this,
+            &forgotpasspage::on_btnChangePassword_clicked);
+
 }
 
 
@@ -129,6 +137,51 @@ void forgotpasspage::checkChangeButton()
         pass.length() >= 8;
 
     ui->pushButton_newpass->setEnabled(ok);
+}
+
+void forgotpasspage::on_btnChangePassword_clicked() {
+    QString username = ui->lineEdit_username->text().trimmed();
+    QString phone = ui->lineEdit_phone->text().trimmed();
+    QString newPassword = ui->lineEdit_newpass->text();
+    QString confirmnewpass = ui->lineEdit_confirm_newpass->text();
+
+    if (username.isEmpty() || phone.isEmpty() || newPassword.isEmpty()) {
+        QMessageBox::warning(this, "EROR", "pleae fill all blanks.");
+        return;
+    }
+
+    user* user = Storage->getuser(username);
+    if (!user) {
+        QMessageBox::critical(this, "EROR", "username does not found.");
+        return;
+    }
+
+    if (AuthManager::verifyPhoneForRecovery(user->phone, phone)) {
+        if (newPassword.length() < 8) {
+            QMessageBox::warning(this, "EROR", "passeord must be more than 8 characters.");
+            delete user;
+            return;
+        }
+
+        user->passwordHash = AuthManager::hashPassword(newPassword);
+
+        if (Storage->updateuser(*user)) {
+            QMessageBox::information(this, "successfull", "password changed.");
+
+            ui->lineEdit_username->clear();
+            ui->lineEdit_phone->clear();
+            ui->lineEdit_newpass->clear();
+            ui->lineEdit_confirm_newpass->clear();
+
+            emit passwordChanged();
+        } else {
+            QMessageBox::critical(this, "EROR", "can not connect to the database.");
+        }
+    } else {
+        QMessageBox::critical(this, "EROR", "phone number does not exist.");
+    }
+
+    delete user;
 }
 
 forgotpasspage::~forgotpasspage()

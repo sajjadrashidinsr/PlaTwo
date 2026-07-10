@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>951</width>
-    <height>838</height>
+    <width>805</width>
+    <height>866</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -78,13 +78,13 @@
            <number>40</number>
           </property>
           <property name="topMargin">
-           <number>20</number>
+           <number>0</number>
           </property>
           <property name="rightMargin">
            <number>40</number>
           </property>
           <property name="bottomMargin">
-           <number>20</number>
+           <number>0</number>
           </property>
           <item>
            <widget class="QWidget" name="widget_title" native="true">
@@ -218,7 +218,7 @@
             <property name="minimumSize">
              <size>
               <width>200</width>
-              <height>42</height>
+              <height>38</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -271,7 +271,7 @@
             <property name="minimumSize">
              <size>
               <width>200</width>
-              <height>42</height>
+              <height>38</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -296,6 +296,44 @@
             </property>
            </widget>
           </item>
+          <item alignment="Qt::AlignmentFlag::AlignHCenter">
+           <widget class="QLabel" name="label">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Phone number:</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignmentFlag::AlignCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item alignment="Qt::AlignmentFlag::AlignHCenter">
+           <widget class="QLineEdit" name="lineEdit_phone">
+            <property name="minimumSize">
+             <size>
+              <width>200</width>
+              <height>38</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>200</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignmentFlag::AlignCenter</set>
+            </property>
+            <property name="placeholderText">
+             <string>Enter Phone number</string>
+            </property>
+           </widget>
+          </item>
           <item>
            <widget class="QLabel" name="label_email">
             <property name="font">
@@ -317,7 +355,7 @@
             <property name="minimumSize">
              <size>
               <width>200</width>
-              <height>42</height>
+              <height>38</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -358,7 +396,7 @@
             <property name="minimumSize">
              <size>
               <width>200</width>
-              <height>42</height>
+              <height>38</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -402,7 +440,7 @@
             <property name="minimumSize">
              <size>
               <width>200</width>
-              <height>42</height>
+              <height>38</height>
              </size>
             </property>
             <property name="maximumSize">
@@ -461,7 +499,7 @@
                  <property name="minimumSize">
                   <size>
                    <width>260</width>
-                   <height>48</height>
+                   <height>45</height>
                   </size>
                  </property>
                  <property name="font">
