@@ -82,3 +82,15 @@ CMakeLists.txt.user*
 .uic/
 /build*/
 /.qtcreator/
+
+# Ignore build directories anywhere
+**/build/
+**/build/**
+
+# Qt Creator cache
+**/.qtc_clangd/
+**/.cache/
+
+# SQLite database generated in build
+*.sqlite
+*.sqlite3
