@@ -4,7 +4,7 @@
 #include <QWidget>
 #include <QAction>
 
-// Forward declaration
+
 class ClientManager;
 class user;
 

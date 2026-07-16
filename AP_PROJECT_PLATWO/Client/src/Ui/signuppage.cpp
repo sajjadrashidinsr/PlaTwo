@@ -1,7 +1,7 @@
 #include "signuppage.h"
 #include "ui_signuppage.h"
-#include "client_manager.h"  // ✅ اضافه کردن include کامل
-#include "user.h"            // ✅ اضافه کردن include کامل
+#include "client_manager.h"
+#include "user.h"
 #include <QAction>
 #include <QIcon>
 #include <QMessageBox>
@@ -14,15 +14,21 @@ signuppage::signuppage(ClientManager* client, QWidget *parent)
     ui->setupUi(this);
 
     ui->lineEdit_name->addAction(QIcon(":/icons/user.png"), QLineEdit::LeadingPosition);
+
     ui->lineEdit_username->addAction(QIcon(":/icons/user.png"), QLineEdit::LeadingPosition);
+
     ui->lineEdit_username->setMaxLength(24);
+
     ui->lineEdit_email->addAction(QIcon(":/icons/email.png"), QLineEdit::LeadingPosition);
+
     ui->lineEdit_password->addAction(QIcon(":/icons/lock.png"), QLineEdit::LeadingPosition);
 
     ui->lineEdit_confirmpassword->setEchoMode(QLineEdit::Password);
+
     ui->lineEdit_confirmpassword->addAction(QIcon(":/icons/lock.png"), QLineEdit::LeadingPosition);
 
     passwordAction = ui->lineEdit_password->addAction(QIcon(":/icons/eye.png"), QLineEdit::TrailingPosition);
+
     confirmpasswordAction = ui->lineEdit_confirmpassword->addAction(QIcon(":/icons/eye.png"), QLineEdit::TrailingPosition);
 
     connect(passwordAction, &QAction::triggered, [this]() {
@@ -40,16 +46,22 @@ signuppage::signuppage(ClientManager* client, QWidget *parent)
     ui->pushButton_create_account->setEnabled(false);
 
     connect(ui->lineEdit_username, &QLineEdit::textChanged, this, &signuppage::updateCreateButton);
+
     connect(ui->lineEdit_email, &QLineEdit::textChanged, this, &signuppage::updateCreateButton);
+
     connect(ui->lineEdit_password, &QLineEdit::textChanged, this, &signuppage::updateCreateButton);
+
     connect(ui->lineEdit_confirmpassword, &QLineEdit::textChanged, this, &signuppage::updateCreateButton);
+
     updateCreateButton();
 
     connect(ui->pushButton_login_back, &QPushButton::clicked, this, &signuppage::loginClicked);
+
     connect(ui->pushButton_create_account, &QPushButton::clicked, this, &signuppage::on_btnSubmitSignUp_clicked);
 
     connect(clientManager, &ClientManager::registerResponse,
             this, &signuppage::onRegisterResponse);
+
 }
 
 void signuppage::updateCreateButton() {
@@ -65,11 +77,13 @@ void signuppage::updateCreateButton() {
 }
 
 void signuppage::on_btnSubmitSignUp_clicked() {
-    user newUser;  // ✅ حالا type کامل است
+    user newUser;
+
     newUser.name = ui->lineEdit_name->text().trimmed();
     newUser.username = ui->lineEdit_username->text().trimmed();
     newUser.phone = ui->lineEdit_phone->text().trimmed();
     newUser.email = ui->lineEdit_email->text().trimmed();
+
     QString password = ui->lineEdit_password->text();
     QString confirmpass = ui->lineEdit_confirmpassword->text();
 
@@ -90,7 +104,7 @@ void signuppage::on_btnSubmitSignUp_clicked() {
         return;
     }
 
-    // رمز را بدون هش به سرور می‌فرستیم، سرور هش می‌کند
+
     newUser.passwordHash = password;
 
     ui->pushButton_create_account->setEnabled(false);

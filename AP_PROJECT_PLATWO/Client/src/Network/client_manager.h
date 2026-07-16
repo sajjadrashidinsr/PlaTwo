@@ -26,7 +26,9 @@ public:
     void sendChangePassword(const QString& username, const QString& phone,
                             const QString& newPassword);
     void sendGetUser(const QString& username);
-    void sendUpdateUser(const user& updatedUser);
+
+    // ✅ تغییر مهم: اضافه شدن oldUsername به ورودی تابع
+    void sendUpdateUser(const QString& oldUsername, const user& updatedUser);
 
 signals:
     void connected();

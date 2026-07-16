@@ -4,9 +4,12 @@
 #include "signuppage.h"
 #include "forgotpasspage.h"
 #include "client_manager.h"
+#include "user.h"
+#include "mainmenuwindow.h"
 #include <QFile>
 #include <QMessageBox>
 #include <QTimer>
+#include <QDebug>
 
 Loginwindow::Loginwindow(QWidget *parent)
     : QMainWindow(parent)
@@ -14,14 +17,17 @@ Loginwindow::Loginwindow(QWidget *parent)
     , clientManager(nullptr)
     , m_loginPage(nullptr)
     , m_signupPage(nullptr)
-    , m_forgotPage(nullptr) {
+    , m_forgotPage(nullptr)
+    , m_currentUser(nullptr)
+    , m_mainMenuWindow(nullptr) {
 
     ui->setupUi(this);
 
-    // ایجاد ClientManager
+    this->setWindowIcon(QIcon(":/icons/logo.png"));
+
     clientManager = new ClientManager(this);
 
-    // اتصال سیگنال‌های ClientManager
+
     connect(clientManager, &ClientManager::connected,
             this, &Loginwindow::onConnectedToServer);
     connect(clientManager, &ClientManager::disconnected,
@@ -29,7 +35,7 @@ Loginwindow::Loginwindow(QWidget *parent)
     connect(clientManager, &ClientManager::error,
             this, &Loginwindow::onServerError);
 
-    // ایجاد صفحات
+
     m_loginPage = new loginPage(clientManager, this);
     ui->verticalLayoutPageLogin->addWidget(m_loginPage);
 
@@ -39,7 +45,7 @@ Loginwindow::Loginwindow(QWidget *parent)
     m_forgotPage = new forgotpasspage(clientManager, this);
     ui->verticalLayoutPageforgotpass->addWidget(m_forgotPage);
 
-    // اتصال سیگنال‌های صفحات
+
     connect(m_loginPage, &loginPage::createAccountClicked, this, [this]() {
         ui->stackedWidget->setCurrentWidget(ui->page_signup);
     });
@@ -64,18 +70,90 @@ Loginwindow::Loginwindow(QWidget *parent)
         ui->stackedWidget->setCurrentWidget(ui->pageLogin);
     });
 
-    connect(m_loginPage, &loginPage::loginSuccessful, this,
-            [this](user* user) {
-                QMessageBox::information(this, "Login Successful",
-                                         "Welcome " + user->name + "!\n(Main menu will open here)");
-                delete user;
-            });
 
-    // نمایش صفحه ورود
+    connect(m_loginPage, &loginPage::loginSuccessful, this, [this](user* loggedInUser) {
+        qDebug() << "[Loginwindow] Login successful for user:" << (loggedInUser ? loggedInUser->username : "null");
+
+    // اگر منوی قبلی وجود دارد، آن را ببند
+        if (m_mainMenuWindow) {
+        qDebug() << "[Loginwindow] Closing existing main menu";
+        m_mainMenuWindow->close();
+        m_mainMenuWindow = nullptr;
+    }
+
+    // اگر کاربر قبلی وجود داشت، حذفش کن
+    if (m_currentUser) {
+        delete m_currentUser;
+        m_currentUser = nullptr;
+    }
+
+    // ذخیره کاربر فعلی
+    m_currentUser = loggedInUser;
+    qDebug() << "[Loginwindow] Current user set:" << (m_currentUser ? m_currentUser->username : "null");
+
+    // ایجاد منوی اصلی
+    qDebug() << "[Loginwindow] Creating MainMenuWindow...";
+    m_mainMenuWindow = new MainMenuWindow(m_currentUser, clientManager, nullptr);
+    m_mainMenuWindow->setAttribute(Qt::WA_DeleteOnClose, true);
+    qDebug() << "[Loginwindow] MainMenuWindow created";
+
+    // وقتی منو بسته شد، پنجره اصلی را نشان بده
+    connect(m_mainMenuWindow, &MainMenuWindow::destroyed, this, &Loginwindow::onMainMenuClosed);
+
+    // وقتی کاربر خواست خارج شود، منو را ببند
+    connect(m_mainMenuWindow, &MainMenuWindow::exitRequested, this, [this]() {
+        qDebug() << "[Loginwindow] Exit requested, closing main menu";
+        if (m_mainMenuWindow) {
+            m_mainMenuWindow->close();
+        }
+    });
+
+    // اعمال استایل (با بررسی وجود فایل)
+    QFile styleFile(":/qss/main_menu.qss");
+    if (styleFile.open(QFile::ReadOnly | QFile::Text)) {
+        QString style = QTextStream(&styleFile).readAll();
+        m_mainMenuWindow->setStyleSheet(style);
+        qDebug() << "[Loginwindow] Style applied successfully";
+    } else {
+        qDebug() << "[Loginwindow] WARNING: main_menu.qss not found!";
+        m_mainMenuWindow->setStyleSheet("QWidget { background-color: #1e1e2e; color: white; }");
+    }
+
+    // نمایش منو
+    qDebug() << "[Loginwindow] Calling show() on main menu...";
+    m_mainMenuWindow->show();
+    qDebug() << "[Loginwindow] show() returned, hiding login window...";
+    this->hide();
+    qDebug() << "[Loginwindow] Login window hidden. Main menu should be visible now.";
+});
+
     ui->stackedWidget->setCurrentWidget(ui->pageLogin);
 
-    // تلاش برای اتصال به سرور
+
     QTimer::singleShot(100, this, &Loginwindow::tryConnectToServer);
+}
+
+void Loginwindow::onMainMenuClosed() {
+    qDebug() << "[Loginwindow] Main menu closed, showing login window";
+
+    this->show();
+
+    m_mainMenuWindow = nullptr;
+
+    // کاربر فعلی را حذف نکن، چون ممکن است دوباره استفاده شود
+    // اما اگر می‌خواهید لاگین مجدد اجباری باشد، می‌توانید حذف کنید
+    // if (m_currentUser) {
+    //     delete m_currentUser;
+    //     m_currentUser = nullptr;
+    // }
+}
+
+void Loginwindow::showLoginWindow() {
+    this->show();
+    if (m_mainMenuWindow) {
+        m_mainMenuWindow->close();
+        m_mainMenuWindow = nullptr;
+    }
 }
 
 bool Loginwindow::tryConnectToServer() {
@@ -101,5 +179,12 @@ void Loginwindow::onServerError(const QString& error) {
 }
 
 Loginwindow::~Loginwindow() {
+
+    if (m_currentUser) {
+        delete m_currentUser;
+        m_currentUser = nullptr;
+    }
+
+
     delete ui;
 }

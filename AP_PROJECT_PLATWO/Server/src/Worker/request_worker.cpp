@@ -100,10 +100,10 @@ void RequestWorker::handleRegister(const QJsonObject& data) {
     newUser.phone = data["phone"].toString();
     newUser.email = data["email"].toString();
     QString rawPassword = data["passwordHash"].toString();
+    newUser.passwordHash = AuthManager::hashPassword(rawPassword);
 
     qDebug() << "[Worker] Registering user:" << newUser.username;
 
-    // اعتبارسنجی
     if (!AuthManager::validateEmail(newUser.email)) {
         sendResponse(NetworkConstants::MSG_REGISTER, false, "Invalid email format");
         return;
@@ -262,16 +262,38 @@ void RequestWorker::handleGetUser(const QJsonObject& data) {
 }
 
 void RequestWorker::handleUpdateUser(const QJsonObject& data) {
-    if (!data.contains("username")) {
-        sendResponse(NetworkConstants::MSG_UPDATE_USER, false, "Username required");
+    // ۱. بررسی می‌کنیم که کلاینت حتماً هم oldUsername و هم آبجکت user را فرستاده باشد
+    if (!data.contains("oldUsername") || !data.contains("user")) {
+        sendResponse(NetworkConstants::MSG_UPDATE_USER, false, "Missing oldUsername or user data");
         return;
     }
 
-    user updatedUser = NetworkProtocol::userFromJson(data);
+    // ۲. استخراج نام کاربری قدیم و اطلاعات جدید
+    QString oldUsername = data["oldUsername"].toString();
+    QJsonObject userObj = data["user"].toObject();
+    user updatedUser = NetworkProtocol::userFromJson(userObj);
 
-    if (storageManager->updateuser(updatedUser)) {
+    qDebug() << "[Worker] Updating user profile. Old username:" << oldUsername << ", New username:" << updatedUser.username;
+
+    // ۳. اگر پسورد هش شده در کلاینت خالی است، به این معنی است که کاربر پسوردش را عوض نکرده.
+    if (updatedUser.passwordHash.isEmpty()) {
+        user* existingUser = storageManager->getuser(oldUsername);
+        if (existingUser) {
+            updatedUser.passwordHash = existingUser->passwordHash;
+            delete existingUser;
+        } else {
+            sendResponse(NetworkConstants::MSG_UPDATE_USER, false, "User not found in database.");
+            return;
+        }
+    } else {
+        // اگر پسورد جدیدی وارد شده، آن را هش می‌کنیم
+        updatedUser.passwordHash = AuthManager::hashPassword(updatedUser.passwordHash);
+    }
+
+    // ۴. آپدیت در دیتابیس با هر دو مقدار
+    if (storageManager->updateuser(oldUsername, updatedUser)) {
         sendResponse(NetworkConstants::MSG_UPDATE_USER, true, "User updated successfully");
     } else {
-        sendResponse(NetworkConstants::MSG_UPDATE_USER, false, "Failed to update user");
+        sendResponse(NetworkConstants::MSG_UPDATE_USER, false, "Failed to update user. Username might be taken.");
     }
 }

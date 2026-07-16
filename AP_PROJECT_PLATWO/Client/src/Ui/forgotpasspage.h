@@ -4,7 +4,6 @@
 #include <QWidget>
 #include <QAction>
 
-// Forward declaration
 class ClientManager;
 class user;
 
@@ -24,6 +23,7 @@ signals:
     void passwordChanged();
 
 private slots:
+
     void toggleNewPassword();
     void toggleConfirmPassword();
     void checkVerifyButton();
@@ -42,6 +42,7 @@ private:
 
 private slots:
     void on_btnChangePassword_clicked();
+
 };
 
 #endif // FORGOTPASSPAGE_H

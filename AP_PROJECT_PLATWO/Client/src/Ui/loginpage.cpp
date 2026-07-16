@@ -1,7 +1,7 @@
 #include "loginpage.h"
 #include "ui_loginpage.h"
-#include "client_manager.h"  // ✅ اضافه کردن include کامل
-#include "user.h"            // ✅ اضافه کردن include کامل
+#include "client_manager.h"
+#include "user.h"
 #include <QAction>
 #include <QIcon>
 #include <QMessageBox>
@@ -14,10 +14,13 @@ loginPage::loginPage(ClientManager* client, QWidget *parent)
     ui->setupUi(this);
 
     ui->lineEdit_username->addAction(QIcon(":/icons/user.png"), QLineEdit::LeadingPosition);
+
     ui->lineEdit_username->setMaxLength(24);
+
     ui->lineEdit_username->setFocus();
 
     ui->lineEdit_password->addAction(QIcon(":/icons/lock.png"), QLineEdit::LeadingPosition);
+
     ui->lineEdit_password->setMaxLength(32);
 
     togglePasswordAction = ui->lineEdit_password->addAction(
@@ -25,8 +28,10 @@ loginPage::loginPage(ClientManager* client, QWidget *parent)
 
     connect(ui->lineEdit_username, &QLineEdit::textChanged,
             this, &loginPage::updateLoginButton);
+
     connect(ui->lineEdit_password, &QLineEdit::textChanged,
             this, &loginPage::updateLoginButton);
+
     updateLoginButton();
 
     connect(togglePasswordAction, &QAction::triggered, [this]() {
@@ -36,11 +41,14 @@ loginPage::loginPage(ClientManager* client, QWidget *parent)
     });
 
     connect(ui->pushButton_create_sign, &QPushButton::clicked, this, &loginPage::createAccountClicked);
+
     connect(ui->pushButton_forgot, &QPushButton::clicked, this, &loginPage::forgotPasswordClicked);
+
     connect(ui->pushButton_login, &QPushButton::clicked, this, &loginPage::on_btnLogin_clicked);
 
     connect(clientManager, &ClientManager::loginResponse,
             this, &loginPage::onLoginResponse);
+
 }
 
 void loginPage::updateLoginButton() {
@@ -79,7 +87,7 @@ void loginPage::onLoginResponse(bool success, user* userData, const QString& mes
     } else {
         QMessageBox::critical(this, "Login Failed", message);
         if (userData) {
-            delete userData;  // ✅ حالا type کامل است
+            delete userData;
         }
     }
 }

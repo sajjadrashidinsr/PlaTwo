@@ -7,14 +7,19 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    Loginwindow w;
-    QFile file(":/qss/theme.qss");
 
+    QApplication::setQuitOnLastWindowClosed(false);
+
+    QFile file(":/qss/theme.qss");
     if (file.open(QFile::ReadOnly))
     {
         QString styleSheet = QLatin1String(file.readAll());
         a.setStyleSheet(styleSheet);
     }
-    w.show();
+
+
+    Loginwindow* w = new Loginwindow();
+    w->show();
+
     return QApplication::exec();
 }

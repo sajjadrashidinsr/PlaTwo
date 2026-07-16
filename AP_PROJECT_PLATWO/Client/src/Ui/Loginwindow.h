@@ -4,11 +4,12 @@
 #include <QMainWindow>
 #include <QVBoxLayout>
 
-// Forward declarations - به جای include کامل
 class ClientManager;
 class loginPage;
 class signuppage;
 class forgotpasspage;
+class user;
+class MainMenuWindow;
 
 namespace Ui {
 class Loginwindow;
@@ -25,6 +26,7 @@ private slots:
     void onConnectedToServer();
     void onServerDisconnected();
     void onServerError(const QString& error);
+    void onMainMenuClosed();
 
 private:
     Ui::Loginwindow *ui;
@@ -33,7 +35,12 @@ private:
     signuppage* m_signupPage;
     forgotpasspage* m_forgotPage;
 
+
+    user* m_currentUser = nullptr;
+    MainMenuWindow* m_mainMenuWindow = nullptr;
+
     bool tryConnectToServer();
+    void showLoginWindow();
 };
 
 #endif // LOGINWINDOW_H
