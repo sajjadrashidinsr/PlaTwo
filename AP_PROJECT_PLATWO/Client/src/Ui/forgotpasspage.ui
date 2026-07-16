@@ -178,10 +178,10 @@
                   <string/>
                  </property>
                  <property name="pixmap">
-                  <pixmap>:/icons/lock.png</pixmap>
+                  <pixmap resource="../../resources/resources.qrc">:/icons/lock_forgot.png</pixmap>
                  </property>
                  <property name="scaledContents">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <property name="alignment">
                   <set>Qt::AlignmentFlag::AlignCenter</set>
@@ -339,7 +339,7 @@
                        <enum>Qt::TextFormat::AutoText</enum>
                       </property>
                       <property name="pixmap">
-                       <pixmap>:/icons/verified.png</pixmap>
+                       <pixmap resource="../../resources/resources.qrc">:/icons/verified.png</pixmap>
                       </property>
                       <property name="scaledContents">
                        <bool>true</bool>
@@ -563,7 +563,7 @@
                        <string/>
                       </property>
                       <property name="pixmap">
-                       <pixmap>:/icons/changed.png</pixmap>
+                       <pixmap resource="../../resources/resources.qrc">:/icons/changed.png</pixmap>
                       </property>
                       <property name="scaledContents">
                        <bool>true</bool>
@@ -753,6 +753,8 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../resources/resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

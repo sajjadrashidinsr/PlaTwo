@@ -15,12 +15,12 @@ ClientManager::ClientManager(QObject* parent)
     connectionTimer->setSingleShot(true);
     connectionTimer->setInterval(3000);
 
-    // اتصال سیگنال‌ها با روش صحیح برای Qt 6
+
     connect(socket, &QTcpSocket::connected, this, &ClientManager::onConnected);
     connect(socket, &QTcpSocket::disconnected, this, &ClientManager::onDisconnected);
     connect(socket, &QTcpSocket::readyRead, this, &ClientManager::onReadyRead);
 
-    // ✅ استفاده از errorOccurred در Qt 6
+
     connect(socket, &QTcpSocket::errorOccurred,
             this, &ClientManager::onError);
 
@@ -37,8 +37,13 @@ bool ClientManager::connectToServer(const QString& address, quint16 port) {
     }
 
     socket->connectToHost(address, port);
+
+    if (socket->waitForConnected(1000)) {
+        return true;
+    }
+
     connectionTimer->start();
-    return true;
+    return false;
 }
 
 void ClientManager::disconnectFromServer() {
@@ -145,16 +150,19 @@ void ClientManager::sendGetUser(const QString& username) {
     awaitingResponse = true;
 }
 
-void ClientManager::sendUpdateUser(const user& updatedUser) {
+void ClientManager::sendUpdateUser(const QString& oldUsername, const user& updatedUser) {
     if (!isConnected()) {
         emit error("Not connected to server");
         return;
     }
 
-    QJsonObject userObj = NetworkProtocol::userToJson(updatedUser);
+    QJsonObject data;
+    data["oldUsername"] = oldUsername;
+    data["user"] = NetworkProtocol::userToJson(updatedUser);
+
     QString message = NetworkProtocol::buildMessage(
         NetworkConstants::MSG_UPDATE_USER,
-        userObj
+        data
         );
 
     socket->write(message.toUtf8());

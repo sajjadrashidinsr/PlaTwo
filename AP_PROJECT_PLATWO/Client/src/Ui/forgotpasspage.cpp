@@ -1,7 +1,6 @@
 #include "forgotpasspage.h"
 #include "ui_forgotpasspage.h"
 #include "client_manager.h"
-// #include "user.h"  // ❌ این خط را حذف کنید - چون مستقیماً استفاده نمی‌شود
 #include <QAction>
 #include <QIcon>
 #include <QMessageBox>
@@ -14,32 +13,45 @@ forgotpasspage::forgotpasspage(ClientManager* client, QWidget *parent)
     ui->setupUi(this);
 
     ui->lineEdit_username->addAction(QIcon(":/icons/user.png"), QLineEdit::LeadingPosition);
+
     userAction = ui->lineEdit_phone->addAction(QIcon(":/icons/user.png"), QLineEdit::LeadingPosition);
+
     ui->lineEdit_newpass->addAction(QIcon(":/icons/lock.png"), QLineEdit::LeadingPosition);
+
     ui->lineEdit_confirm_newpass->addAction(QIcon(":/icons/lock.png"), QLineEdit::LeadingPosition);
 
     ui->lineEdit_newpass->setEchoMode(QLineEdit::Password);
+
     ui->lineEdit_confirm_newpass->setEchoMode(QLineEdit::Password);
 
     eyeNewPass = ui->lineEdit_newpass->addAction(QIcon(":/icons/eye.png"), QLineEdit::TrailingPosition);
+
     eyeConfirmPass = ui->lineEdit_confirm_newpass->addAction(QIcon(":/icons/eye.png"), QLineEdit::TrailingPosition);
 
     connect(eyeNewPass, &QAction::triggered, this, &forgotpasspage::toggleNewPassword);
+
     connect(eyeConfirmPass, &QAction::triggered, this, &forgotpasspage::toggleConfirmPassword);
+
     connect(ui->pushButton_backlogin, &QPushButton::clicked, this, &forgotpasspage::backToLoginClicked);
 
     ui->pushButton_verify->setEnabled(false);
+
     connect(ui->lineEdit_phone, &QLineEdit::textChanged, this, &forgotpasspage::checkVerifyButton);
 
     ui->pushButton_newpass->setEnabled(false);
+
     connect(ui->lineEdit_newpass, &QLineEdit::textChanged, this, &forgotpasspage::checkChangeButton);
+
     connect(ui->lineEdit_confirm_newpass, &QLineEdit::textChanged, this, &forgotpasspage::checkChangeButton);
+
     connect(ui->pushButton_newpass, &QPushButton::clicked, this, &forgotpasspage::on_btnChangePassword_clicked);
 
     connect(clientManager, &ClientManager::forgotPasswordResponse,
             this, &forgotpasspage::onForgotPasswordResponse);
+
     connect(clientManager, &ClientManager::passwordChangedResponse,
-            this, &forgotpasspage::onPasswordChangedResponse);
+                        this, &forgotpasspage::onPasswordChangedResponse);
+
 }
 
 void forgotpasspage::toggleNewPassword() {
@@ -48,7 +60,7 @@ void forgotpasspage::toggleNewPassword() {
     eyeNewPass->setIcon(QIcon(newPassVisible ? ":/icons/eye_off.png" : ":/icons/eye.png"));
 }
 
-void forgotpasspage::toggleConfirmPassword() {
+void forgotpasspage::toggleConfirmPassword() { 
     confirmPassVisible = !confirmPassVisible;
     ui->lineEdit_confirm_newpass->setEchoMode(confirmPassVisible ? QLineEdit::Normal : QLineEdit::Password);
     eyeConfirmPass->setIcon(QIcon(confirmPassVisible ? ":/icons/eye_off.png" : ":/icons/eye.png"));
@@ -68,6 +80,7 @@ void forgotpasspage::checkChangeButton() {
 }
 
 void forgotpasspage::on_btnChangePassword_clicked() {
+
     QString username = ui->lineEdit_username->text().trimmed();
     QString phone = ui->lineEdit_phone->text().trimmed();
     QString newPassword = ui->lineEdit_newpass->text();
@@ -90,7 +103,9 @@ void forgotpasspage::on_btnChangePassword_clicked() {
 }
 
 void forgotpasspage::onForgotPasswordResponse(bool success, const QString& message) {
+
     if (success) {
+        ui->widget_change->setVisible(true);
         QString username = ui->lineEdit_username->text().trimmed();
         QString phone = ui->lineEdit_phone->text().trimmed();
         QString newPassword = ui->lineEdit_newpass->text();

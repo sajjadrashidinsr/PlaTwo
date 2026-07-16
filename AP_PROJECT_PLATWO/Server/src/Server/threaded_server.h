@@ -8,10 +8,9 @@
 #include <QThreadPool>
 #include <QMutex>
 #include "storage_manager.h"
-// #include "request_worker.h"  // این خط را حذف کنید - نیازی نیست
 #include "network_constants.h"
 
-// Forward declaration
+
 class RequestWorker;
 
 class ThreadedServer : public QObject {
@@ -29,7 +28,6 @@ public:
 signals:
     void clientConnected(const QString& address, quint16 port);
     void clientDisconnected(const QString& address, quint16 port);
-    // حذف سیگنال requestProcessed - چون استفاده نمی‌شود
 
 private slots:
     void onNewConnection();

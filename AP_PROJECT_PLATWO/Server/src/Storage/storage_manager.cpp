@@ -13,9 +13,9 @@ storage_manager::~storage_manager() {
 QSqlDatabase storage_manager::getThreadDatabase() {
     Qt::HANDLE threadId = QThread::currentThreadId();
 
-    // بررسی اینکه آیا برای این ترد اتصال وجود دارد
+
     if (!threadDb.hasLocalData()) {
-        // ایجاد اتصال جدید برای این ترد
+
         QString connectionName = QString("thread_%1")
                                      .arg(reinterpret_cast<quint64>(threadId), 0, 16);
 
@@ -32,7 +32,6 @@ QSqlDatabase storage_manager::getThreadDatabase() {
 
         qDebug() << "[DB] Database opened for thread:" << connectionName;
 
-        // ایجاد جداول اگر وجود ندارند (داده‌های موجود حفظ می‌شوند)
         initDatabase(*db);
 
         threadDb.setLocalData(db);
@@ -84,7 +83,6 @@ void storage_manager::initDatabase(QSqlDatabase& db) {
         qDebug() << "[DB] Users table ready";
     }
 
-    // ایجاد جدول GameHistory (اگر وجود داشته باشد، ایجاد نمی‌کند و داده‌ها حفظ می‌شوند)
     QString createHistory = R"(
         CREATE TABLE IF NOT EXISTS GameHistory (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,6 +101,21 @@ void storage_manager::initDatabase(QSqlDatabase& db) {
     } else {
         qDebug() << "[DB] GameHistory table ready";
     }
+}
+
+bool storage_manager::verifyUser(const QString& username, const QString& phone) {
+    QMutexLocker locker(&dbMutex);
+    QSqlDatabase db = getThreadDatabase();
+
+    QSqlQuery query(db);
+    query.prepare("SELECT 1 FROM users WHERE username = :username AND phone = :phone");
+    query.bindValue(":username", username);
+    query.bindValue(":phone", phone);
+
+    if (query.exec() && query.next()) {
+        return true;
+    }
+    return false;
 }
 
 bool storage_manager::registeruser(const user& user) {
@@ -172,7 +185,6 @@ user* storage_manager::getuser(const QString& username) {
     u->nineMensMorrisScore = query.value("morrisScore").toInt();
     u->fanoronaScore = query.value("fanoronaScore").toInt();
 
-    // دریافت تاریخچه بازی‌ها
     QSqlQuery historyQuery(db);
     historyQuery.prepare("SELECT * FROM GameHistory WHERE username = :username");
     historyQuery.bindValue(":username", username);
@@ -194,7 +206,14 @@ user* storage_manager::getuser(const QString& username) {
 }
 
 bool storage_manager::updateuser(const user& user) {
-    qDebug() << "[DB] updateuser called for username:" << user.username;
+    // وقتی فقط یک یوزر داده می‌شود، یعنی نام کاربری عوض نشده است
+    // پس نام کاربری قدیم و جدید هر دو همان user.username هستند
+    return updateuser(user.username, user);
+}
+
+// ✅ متد جدید و ایمن برای آپدیت کاربر
+bool storage_manager::updateuser(const QString& oldUsername, const user& user) {
+    qDebug() << "[DB] updateuser called. Changing from:" << oldUsername << "to:" << user.username;
 
     QMutexLocker locker(&dbMutex);
 
@@ -204,11 +223,17 @@ bool storage_manager::updateuser(const user& user) {
         return false;
     }
 
+    // شروع یک تراکنش برای اطمینان از آپدیت شدن کامل هر دو جدول
+    db.transaction();
+
+    // ۱. آپدیت کردن اطلاعات در جدول users
     QSqlQuery query(db);
-    query.prepare("UPDATE users SET name = :name, phone = :phone, email = :email, "
+    query.prepare("UPDATE users SET username = :newUsername, name = :name, phone = :phone, email = :email, "
                   "passwordHash = :passwordHash, dotsScore = :dotsScore, "
                   "morrisScore = :morrisScore, fanoronaScore = :fanoronaScore "
-                  "WHERE username = :username");
+                  "WHERE username = :oldUsername");
+
+    query.bindValue(":newUsername", user.username);
     query.bindValue(":name", user.name);
     query.bindValue(":phone", user.phone);
     query.bindValue(":email", user.email);
@@ -216,15 +241,32 @@ bool storage_manager::updateuser(const user& user) {
     query.bindValue(":dotsScore", user.dotsAndBoxesScore);
     query.bindValue(":morrisScore", user.nineMensMorrisScore);
     query.bindValue(":fanoronaScore", user.fanoronaScore);
-    query.bindValue(":username", user.username);
+    query.bindValue(":oldUsername", oldUsername);
 
-    bool result = query.exec();
-    if (!result) {
-        qDebug() << "[DB] updateuser error:" << query.lastError().text();
-    } else {
-        qDebug() << "[DB] User updated successfully:" << user.username;
+    if (!query.exec()) {
+        qDebug() << "[DB] updateuser error in users table:" << query.lastError().text();
+        db.rollback(); // بازگشت به حالت قبل در صورت خطا
+        return false;
     }
-    return result;
+
+    // ۲. آپدیت کردن تاریخچه بازی‌ها (اگر نام کاربری تغییر کرده باشد)
+    if (oldUsername != user.username) {
+        QSqlQuery historyQuery(db);
+        historyQuery.prepare("UPDATE GameHistory SET username = :newUsername WHERE username = :oldUsername");
+        historyQuery.bindValue(":newUsername", user.username);
+        historyQuery.bindValue(":oldUsername", oldUsername);
+
+        if (!historyQuery.exec()) {
+            qDebug() << "[DB] updateuser error in GameHistory table:" << historyQuery.lastError().text();
+            db.rollback(); // بازگشت به حالت قبل در صورت خطا
+            return false;
+        }
+    }
+
+    // ذخیره نهایی تغییرات
+    db.commit();
+    qDebug() << "[DB] User updated successfully from" << oldUsername << "to" << user.username;
+    return true;
 }
 
 bool storage_manager::addGameRecord(const QString& username, const GameRecord& record) {

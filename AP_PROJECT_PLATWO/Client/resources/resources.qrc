@@ -8,7 +8,10 @@
         <file>icons/eye_off.png</file>
         <file>icons/verified.png</file>
         <file>icons/changed.png</file>
+        <file>icons/logout.png</file>
         <file>images/background.jpg</file>
         <file>qss/theme.qss</file>
+        <file>qss/main_menu.qss</file>
+        <file>icons/lock_forgot.png</file>
     </qresource>
 </RCC>

@@ -1,0 +1,134 @@
+/* ==========================================
+   PLA TWO – MAIN MENU GAMING THEME (Enhanced)
+   ========================================== */
+
+/* 1. پوشش دادن تمام نام‌های احتمالی ویجت مرکزی و حذف کوتیشن از آدرس عکس */
+MainMenuWindow, #centralwidget {
+    background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1,
+                                stop:0 #0b0b1a, stop:0.5 #1a1a3a, stop:1 #0b0b1a);
+    font-family: "Segoe UI", "Arial", sans-serif;
+}
+
+/* 2. شفاف کردن QStackedWidget و تمام صفحات داخل آن (بسیار مهم) */
+QStackedWidget,
+QStackedWidget > QWidget {
+    background: transparent;
+    border: none;
+}
+
+QWidget#mainCard {
+    background: rgba(20, 25, 45, 0.65);
+    border: 2px solid #4a7db5;
+    border-radius: 30px;
+}
+
+/* Header */
+QLabel#label_title {
+    color: #f0e68c;
+    font-size: 32px;
+    font-weight: bold;
+}
+
+QLabel#label_subtitle {
+    color: #88ddff;
+    font-size: 15px;
+    font-style: italic;
+}
+
+QLabel#label_welcome {
+    color: #d4e6ff;
+    font-size: 18px;
+    font-weight: normal;
+    background: rgba(0, 30, 60, 0.5);
+    border-radius: 16px;
+    padding: 8px 20px;
+    border: 1px solid #4a7db5;
+}
+
+/* Game buttons (cards) */
+QPushButton {
+    background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #1e2a4a, stop:1 #0a1428);
+    border: 2px solid #2a5f8a;
+    border-radius: 20px;
+    padding: 15px;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+}
+
+QPushButton:hover {
+    background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #2a4a7a, stop:1 #1a2a4a);
+    border: 2px solid #5a9fd4;
+}
+
+QPushButton:pressed {
+    background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #0a1a2a, stop:1 #1a2a4a);
+    border: 2px solid #3a7fb0;
+}
+
+/* Game button inner text and icon */
+QPushButton * {
+    color: #ffffff;
+}
+
+/* Separators */
+QFrame#headerSeparator, QFrame#separator_bottom {
+    background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0,
+                                stop:0 transparent, stop:0.3 #4a7db5, stop:0.7 #4a7db5, stop:1 transparent);
+    max-height: 2px;
+    border: none;
+    margin: 8px 0;
+}
+
+/* Bottom action buttons */
+QPushButton#btnEditProfile, QPushButton#btnExit {
+    background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #2a3a5a, stop:1 #1a2a3a);
+    border: 2px solid #3a6b9a;
+    border-radius: 18px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #e0f0ff;
+    padding: 14px 30px;
+}
+
+QPushButton#btnEditProfile:hover, QPushButton#btnExit:hover {
+    background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #3a5a8a, stop:1 #2a3a5a);
+    border: 2px solid #5a9fd4;
+}
+
+QPushButton#btnEditProfile:pressed, QPushButton#btnExit:pressed {
+    background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #1a2a4a, stop:1 #0a1a2a);
+}
+
+QPushButton#btnExit {
+    border-color: #b04a5a;
+    background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #5a2a3a, stop:1 #3a1a2a);
+}
+
+QPushButton#btnExit:hover {
+    border-color: #f05a7a;
+    background: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #7a3a5a, stop:1 #5a2a3a);
+}
+
+/* Scroll bar */
+QScrollBar:vertical {
+    background: #0a0a1a;
+    width: 12px;
+    border-radius: 6px;
+}
+QScrollBar::handle:vertical {
+    background: #2a5f8a;
+    border-radius: 6px;
+    min-height: 20px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
