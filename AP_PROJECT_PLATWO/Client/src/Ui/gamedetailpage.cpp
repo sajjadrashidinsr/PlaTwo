@@ -1,7 +1,13 @@
 #include "gamedetailpage.h"
 #include "ui_gamedetailpage.h"
 #include "client_manager.h"
+#include "Models/room.h"
+#include "Dialogs/hostjoinselectiondialog.h"
+#include "Dialogs/hostgamedialog.h"
+#include "Dialogs/joingamedialog.h"
+#include "Dialogs/waitingroomdialog.h"
 #include <QInputDialog>
+#include <QMessageBox>
 
 GameDetailPage::GameDetailPage(user* currentUser, ClientManager* client, QWidget *parent)
     : QWidget(parent)
@@ -88,12 +94,36 @@ void GameDetailPage::onBackClicked()
 
 void GameDetailPage::onStartNewGameClicked()
 {
-    QStringList items = {"Host", "Guest"};
-    bool ok;
-    QString choice = QInputDialog::getItem(this, "New Game",
-                                           "Select role:", items, 0, false, &ok);
-    if (!ok) return;
-
-    bool isHost = (choice == "Host");
-    emit startNewGame(currentGameType, isHost);
+    HostJoinSelectionDialog selection(this);
+    connect(&selection, &HostJoinSelectionDialog::hostSelected, this, [this]() {
+        HostGameDialog hostDlg(this);
+        connect(&hostDlg, &HostGameDialog::createRoom, this, [this](const QString& roomName,
+                                                                    quint16 port,
+                                                                    const GameSettings& settings,
+                                                                    const QString& password) {
+            Room room(roomName, port, currentUser->username, settings, password);
+            WaitingRoomDialog waiting(true, room, this);
+            waiting.exec();
+            // Later, Phase 2 will add actual networking
+        });
+        hostDlg.exec();
+    });
+    connect(&selection, &HostJoinSelectionDialog::joinSelected, this, [this]() {
+        JoinGameDialog joinDlg(this);
+        connect(&joinDlg, &JoinGameDialog::connectToServer, this, [this](const QString& ip,
+                                                                         quint16 port,
+                                                                         const QString& password) {
+            Room room;
+            room.hostUsername = "Host";
+            room.guestUsername = currentUser->username;
+            room.port = port;
+            GameSettings settings; settings.boardSize = 3; settings.timed = false;
+            room.gameSettings = settings;
+            WaitingRoomDialog waiting(false, room, this);
+            waiting.exec();
+            // Later, Phase 2 will add actual networking
+        });
+        joinDlg.exec();
+    });
+    selection.exec();
 }
