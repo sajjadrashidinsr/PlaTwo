@@ -2,6 +2,9 @@
 #define JOINGAMEDIALOG_H
 
 #include <QDialog>
+#include "../Models/room.h"
+
+class ClientManager;
 
 namespace Ui {
 class JoinGameDialog;
@@ -15,8 +18,11 @@ public:
     explicit JoinGameDialog(QWidget *parent = nullptr);
     ~JoinGameDialog();
 
+    void setClientManager(ClientManager* client) { m_clientManager = client; }
+
 signals:
-    void connectToServer(const QString& ip, quint16 port, const QString& password);
+    void joinSuccess(const Room& room);
+    void joinFailed(const QString& error);
 
 private slots:
     void onConnectClicked();
@@ -25,6 +31,7 @@ private slots:
 private:
     Ui::JoinGameDialog *ui;
     quint16 m_lastValidPort = 1234;
+    ClientManager* m_clientManager = nullptr;
 };
 
 #endif // JOINGAMEDIALOG_H

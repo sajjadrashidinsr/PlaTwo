@@ -1,5 +1,6 @@
 #include "joingamedialog.h"
 #include "ui_joingamedialog.h"
+#include "client_manager.h"
 #include <QMessageBox>
 #include <QRegularExpressionValidator>
 #include <QIntValidator>
@@ -55,8 +56,51 @@ void JoinGameDialog::onConnectClicked()
     if (!validateJoinInputs(ui))
         return;
 
-    emit connectToServer(ui->ipEdit->text().trimmed(),
-                         static_cast<quint16>(ui->portSpin->value()),
-                         ui->passwordEdit->text());
-    accept();
+    if (!m_clientManager) {
+        QMessageBox::critical(this, "Error", "Client manager not set.");
+        return;
+    }
+
+    if (!m_clientManager->isConnected()) {
+        QMessageBox::warning(this, "Connection Error",
+                             "Not connected to server. Please check the server is running.");
+        return;
+    }
+
+    QString ip = ui->ipEdit->text().trimmed();
+    quint16 port = static_cast<quint16>(ui->portSpin->value());
+    QString password = ui->passwordEdit->text();
+
+    ui->connectButton->setEnabled(false);
+    ui->connectButton->setText("Connecting...");
+
+    connect(m_clientManager, &ClientManager::roomJoined,
+            this, [this](bool success, const Room& room, const QString& message) {
+                disconnect(m_clientManager, &ClientManager::roomJoined, this, nullptr);
+                disconnect(m_clientManager, &ClientManager::roomError, this, nullptr);
+
+                ui->connectButton->setEnabled(true);
+                ui->connectButton->setText("Connect");
+
+                if (success) {
+                    emit joinSuccess(room);
+                    accept();
+                } else {
+                    QMessageBox::critical(this, "Join Failed", message);
+                    emit joinFailed(message);
+                }
+            });
+
+    connect(m_clientManager, &ClientManager::roomError,
+            this, [this](const QString& error) {
+                disconnect(m_clientManager, &ClientManager::roomJoined, this, nullptr);
+                disconnect(m_clientManager, &ClientManager::roomError, this, nullptr);
+
+                ui->connectButton->setEnabled(true);
+                ui->connectButton->setText("Connect");
+                QMessageBox::critical(this, "Room Error", error);
+                emit joinFailed(error);
+            });
+
+    m_clientManager->joinRoom(ip, port, password);
 }
