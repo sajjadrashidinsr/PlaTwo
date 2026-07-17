@@ -7,7 +7,8 @@ ClientManager::ClientManager(QObject* parent)
     : QObject(parent)
     , socket(nullptr)
     , connectionTimer(nullptr)
-    , awaitingResponse(false) {
+    , awaitingResponse(false)
+    , pendingPort(0) {
 
     socket = new QTcpSocket(this);
 
@@ -15,15 +16,11 @@ ClientManager::ClientManager(QObject* parent)
     connectionTimer->setSingleShot(true);
     connectionTimer->setInterval(3000);
 
-
     connect(socket, &QTcpSocket::connected, this, &ClientManager::onConnected);
     connect(socket, &QTcpSocket::disconnected, this, &ClientManager::onDisconnected);
     connect(socket, &QTcpSocket::readyRead, this, &ClientManager::onReadyRead);
-
-
     connect(socket, &QTcpSocket::errorOccurred,
             this, &ClientManager::onError);
-
     connect(connectionTimer, &QTimer::timeout, this, &ClientManager::onConnectionTimeout);
 }
 
@@ -31,19 +28,15 @@ ClientManager::~ClientManager() {
     disconnectFromServer();
 }
 
+// ---------- Connection ----------
 bool ClientManager::connectToServer(const QString& address, quint16 port) {
     if (isConnected()) {
         return true;
     }
 
     socket->connectToHost(address, port);
-
-    if (socket->waitForConnected(1000)) {
-        return true;
-    }
-
     connectionTimer->start();
-    return false;
+    return true;
 }
 
 void ClientManager::disconnectFromServer() {
@@ -55,6 +48,7 @@ void ClientManager::disconnectFromServer() {
     }
 }
 
+// ---------- Authentication ----------
 void ClientManager::sendRegister(const user& newUser) {
     if (!isConnected()) {
         emit error("Not connected to server");
@@ -169,6 +163,74 @@ void ClientManager::sendUpdateUser(const QString& oldUsername, const user& updat
     awaitingResponse = true;
 }
 
+// ---------- Room Management (Phase 2) ----------
+void ClientManager::createRoom(const QString& roomName, quint16 port,
+                               const GameSettings& settings, const QString& password) {
+    if (!isConnected()) {
+        emit roomError("Not connected to server");
+        return;
+    }
+
+    // Store pending info for response handling
+    pendingRoomName = roomName;
+    pendingPort = port;
+    pendingSettings = settings;
+    pendingPassword = password;
+
+    QJsonObject data;
+    data["roomName"] = roomName;
+    data["port"] = static_cast<int>(port);
+    data["gameSettings"] = NetworkProtocol::gameSettingsToJson(settings);
+    data["password"] = password;
+
+    QString message = NetworkProtocol::buildMessage(
+        NetworkConstants::MSG_CREATE_ROOM,
+        data
+        );
+
+    socket->write(message.toUtf8());
+    awaitingResponse = true;
+    qDebug() << "[Client] Create room request sent:" << roomName << "port:" << port;
+}
+
+void ClientManager::joinRoom(const QString& ip, quint16 port, const QString& password) {
+    if (!isConnected()) {
+        emit roomError("Not connected to server");
+        return;
+    }
+
+    QJsonObject data;
+    data["ip"] = ip;
+    data["port"] = static_cast<int>(port);
+    data["password"] = password;
+
+    QString message = NetworkProtocol::buildMessage(
+        NetworkConstants::MSG_JOIN_ROOM,
+        data
+        );
+
+    socket->write(message.toUtf8());
+    awaitingResponse = true;
+    qDebug() << "[Client] Join room request sent to" << ip << ":" << port;
+}
+
+void ClientManager::leaveRoom() {
+    if (!isConnected()) {
+        return;
+    }
+
+    QJsonObject data;
+    // Could include room ID later
+    QString message = NetworkProtocol::buildMessage(
+        NetworkConstants::MSG_LEAVE_ROOM,
+        data
+        );
+
+    socket->write(message.toUtf8());
+    qDebug() << "[Client] Leave room request sent";
+}
+
+// ---------- Slots ----------
 void ClientManager::onConnected() {
     connectionTimer->stop();
     awaitingResponse = false;
@@ -219,6 +281,7 @@ void ClientManager::processMessage(const QString& message) {
     awaitingResponse = false;
 
     switch (type) {
+    // Authentication responses (unchanged)
     case NetworkConstants::MSG_REGISTER:
     case NetworkConstants::MSG_REGISTER_SUCCESS: {
         bool success = data["success"].toBool(false);
@@ -265,6 +328,51 @@ void ClientManager::processMessage(const QString& message) {
         bool success = data["success"].toBool(false);
         QString msg = data["message"].toString();
         emit updateUserResponse(success, msg);
+        break;
+    }
+
+    // ---------- Room responses (Phase 2) ----------
+    case NetworkConstants::MSG_ROOM_CREATED: {
+        bool success = data["success"].toBool(false);
+        QString msg = data["message"].toString();
+        Room room;
+        if (success && data.contains("room")) {
+            room = NetworkProtocol::roomFromJson(data["room"].toObject());
+        } else {
+            // Fallback: use pending info to build a room object
+            room.roomName = pendingRoomName;
+            room.port = pendingPort;
+            room.hostUsername = ""; // Will be set by server
+            room.gameSettings = pendingSettings;
+            room.password = pendingPassword;
+            room.status = RoomStatus::Waiting;
+        }
+        emit roomCreated(success, room, msg);
+        break;
+    }
+    case NetworkConstants::MSG_ROOM_JOINED: {
+        bool success = data["success"].toBool(false);
+        QString msg = data["message"].toString();
+        Room room;
+        if (success && data.contains("room")) {
+            room = NetworkProtocol::roomFromJson(data["room"].toObject());
+        }
+        emit roomJoined(success, room, msg);
+        break;
+    }
+    case NetworkConstants::MSG_PLAYER_JOINED: {
+        QString playerName = data["playerName"].toString();
+        emit playerJoined(playerName);
+        break;
+    }
+    case NetworkConstants::MSG_PLAYER_LEFT: {
+        QString playerName = data["playerName"].toString();
+        emit playerLeft(playerName);
+        break;
+    }
+    case NetworkConstants::MSG_ROOM_ERROR: {
+        QString msg = data["message"].toString();
+        emit roomError(msg);
         break;
     }
     default:
