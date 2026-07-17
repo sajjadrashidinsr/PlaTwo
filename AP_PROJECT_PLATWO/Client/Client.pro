@@ -10,6 +10,11 @@ DEFINES += BUILD_CLIENT
 
 SOURCES += \
     main.cpp \
+    src/Models/room.cpp \
+    src/Ui/Dialogs/hostgamedialog.cpp \
+    src/Ui/Dialogs/hostjoinselectiondialog.cpp \
+    src/Ui/Dialogs/joingamedialog.cpp \
+    src/Ui/Dialogs/waitingroomdialog.cpp \
     src/Ui/Loginwindow.cpp \
     src/Ui/loginpage.cpp \
     src/Ui/signuppage.cpp \
@@ -22,6 +27,12 @@ SOURCES += \
     src/User/user.cpp
 
 HEADERS += \
+    src/Models/GameSettings.h \
+    src/Models/room.h \
+    src/Ui/Dialogs/hostgamedialog.h \
+    src/Ui/Dialogs/hostjoinselectiondialog.h \
+    src/Ui/Dialogs/joingamedialog.h \
+    src/Ui/Dialogs/waitingroomdialog.h \
     src/Ui/Loginwindow.h \
     src/Ui/loginpage.h \
     src/Ui/signuppage.h \
@@ -36,6 +47,10 @@ HEADERS += \
     src/User/user.h
 
 FORMS += \
+    src/Ui/Dialogs/hostgamedialog.ui \
+    src/Ui/Dialogs/hostjoinselectiondialog.ui \
+    src/Ui/Dialogs/joingamedialog.ui \
+    src/Ui/Dialogs/waitingroomdialog.ui \
     src/Ui/Loginwindow.ui \
     src/Ui/loginpage.ui \
     src/Ui/signuppage.ui \
@@ -53,3 +68,4 @@ INCLUDEPATH += \
     $$PWD/src/Ui \
     $$PWD/src/Network \
     $$PWD/src/User
+    $$PWD/src/Models
