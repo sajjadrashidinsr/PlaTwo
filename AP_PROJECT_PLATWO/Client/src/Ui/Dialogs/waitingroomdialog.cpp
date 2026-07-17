@@ -1,5 +1,6 @@
 #include "waitingroomdialog.h"
 #include "ui_waitingroomdialog.h"
+#include "client_manager.h"
 
 #include <QClipboard>
 #include <QApplication>
@@ -24,6 +25,20 @@ WaitingRoomDialog::WaitingRoomDialog(bool isHost, const Room& room, QWidget *par
 WaitingRoomDialog::~WaitingRoomDialog()
 {
     delete ui;
+}
+
+void WaitingRoomDialog::setClientManager(ClientManager* client)
+{
+    m_clientManager = client;
+    if (m_clientManager) {
+        // Connect to dynamic updates
+        connect(m_clientManager, &ClientManager::playerJoined,
+                this, &WaitingRoomDialog::onPlayerJoined);
+        connect(m_clientManager, &ClientManager::playerLeft,
+                this, &WaitingRoomDialog::onPlayerLeft);
+        connect(m_clientManager, &ClientManager::roomError,
+                this, &WaitingRoomDialog::onRoomError);
+    }
 }
 
 QString getLocalIPv4()
@@ -77,6 +92,40 @@ void WaitingRoomDialog::onCopyAddressClicked()
 
 void WaitingRoomDialog::onLeaveClicked()
 {
+    if (m_clientManager) {
+        m_clientManager->leaveRoom();
+    }
     emit leaveRoom();
     accept();
+}
+
+// ---------- Phase 2: Dynamic Updates ----------
+void WaitingRoomDialog::onPlayerJoined(const QString& playerName)
+{
+    qDebug() << "[WaitingRoom] Player joined:" << playerName;
+    m_room.guestUsername = playerName;
+    updateInfo();
+    // Optional: show a notification
+    if (m_isHost) {
+        ui->statusLabel->setText("Guest " + playerName + " has joined! Ready to start game.");
+    }
+}
+
+void WaitingRoomDialog::onPlayerLeft(const QString& playerName)
+{
+    qDebug() << "[WaitingRoom] Player left:" << playerName;
+    if (m_room.guestUsername == playerName) {
+        m_room.guestUsername.clear();
+        updateInfo();
+        if (m_isHost) {
+            ui->statusLabel->setText("Guest " + playerName + " left. Waiting for a new guest...");
+        }
+    }
+}
+
+void WaitingRoomDialog::onRoomError(const QString& error)
+{
+    QMessageBox::critical(this, "Room Error", error);
+    // Optionally close the dialog
+    reject();
 }
