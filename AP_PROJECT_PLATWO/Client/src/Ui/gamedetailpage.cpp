@@ -97,33 +97,46 @@ void GameDetailPage::onStartNewGameClicked()
     HostJoinSelectionDialog selection(this);
     connect(&selection, &HostJoinSelectionDialog::hostSelected, this, [this]() {
         HostGameDialog hostDlg(this);
-        connect(&hostDlg, &HostGameDialog::createRoom, this, [this](const QString& roomName,
-                                                                    quint16 port,
-                                                                    const GameSettings& settings,
-                                                                    const QString& password) {
-            Room room(roomName, port, currentUser->username, settings, password);
-            WaitingRoomDialog waiting(true, room, this);
-            waiting.exec();
-            // Later, Phase 2 will add actual networking
-        });
+        hostDlg.setClientManager(clientManager);  // Set client manager
+
+        connect(&hostDlg, &HostGameDialog::roomCreationSuccess,
+                this, [this](const Room& room) {
+                    // Room created successfully, open waiting room as host
+                    WaitingRoomDialog* waiting = new WaitingRoomDialog(true, room, this);
+                    waiting->setAttribute(Qt::WA_DeleteOnClose);
+                    waiting->setClientManager(clientManager);
+                    waiting->exec();
+                });
+
+        connect(&hostDlg, &HostGameDialog::roomCreationFailed,
+                this, [](const QString& error) {
+                    // Error already shown in dialog, but we could log
+                    qDebug() << "Room creation failed:" << error;
+                });
+
         hostDlg.exec();
     });
+
     connect(&selection, &HostJoinSelectionDialog::joinSelected, this, [this]() {
         JoinGameDialog joinDlg(this);
-        connect(&joinDlg, &JoinGameDialog::connectToServer, this, [this](const QString& ip,
-                                                                         quint16 port,
-                                                                         const QString& password) {
-            Room room;
-            room.hostUsername = "Host";
-            room.guestUsername = currentUser->username;
-            room.port = port;
-            GameSettings settings; settings.boardSize = 3; settings.timed = false;
-            room.gameSettings = settings;
-            WaitingRoomDialog waiting(false, room, this);
-            waiting.exec();
-            // Later, Phase 2 will add actual networking
-        });
+        joinDlg.setClientManager(clientManager);  // Set client manager
+
+        connect(&joinDlg, &JoinGameDialog::joinSuccess,
+                this, [this](const Room& room) {
+                    // Joined successfully, open waiting room as guest
+                    WaitingRoomDialog* waiting = new WaitingRoomDialog(false, room, this);
+                    waiting->setAttribute(Qt::WA_DeleteOnClose);
+                    waiting->setClientManager(clientManager);
+                    waiting->exec();
+                });
+
+        connect(&joinDlg, &JoinGameDialog::joinFailed,
+                this, [](const QString& error) {
+                    qDebug() << "Join failed:" << error;
+                });
+
         joinDlg.exec();
     });
+
     selection.exec();
 }
