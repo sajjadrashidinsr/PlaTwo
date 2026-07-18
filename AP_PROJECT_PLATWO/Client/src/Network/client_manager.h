@@ -34,7 +34,7 @@ public:
     void createRoom(const QString& roomName, quint16 port,
                     const GameSettings& settings, const QString& password = QString());
     void joinRoom(const QString& ip, quint16 port, const QString& password = QString());
-    void leaveRoom();
+    void leaveRoom(quint16 port);
 
 signals:
     // Connection

@@ -6,11 +6,13 @@
 RequestWorker::RequestWorker(QTcpSocket* clientSocket,
                              const QString& message,
                              storage_manager* storage,
+                             RoomManager* roomManager,
                              QObject* parent)
     : QRunnable()
     , socket(clientSocket)
     , messageBuffer(message)
     , storageManager(storage)
+    , roomManager(roomManager)
     , parentObject(parent) {
 
     setAutoDelete(true);
@@ -41,6 +43,7 @@ void RequestWorker::processMessage(const QString& message) {
     qDebug() << "[Worker] Message type:" << type;
 
     switch (type) {
+    // Authentication
     case NetworkConstants::MSG_REGISTER:
         handleRegister(data);
         break;
@@ -58,6 +61,16 @@ void RequestWorker::processMessage(const QString& message) {
         break;
     case NetworkConstants::MSG_UPDATE_USER:
         handleUpdateUser(data);
+        break;
+    // Room management
+    case NetworkConstants::MSG_CREATE_ROOM:
+        handleCreateRoom(data);
+        break;
+    case NetworkConstants::MSG_JOIN_ROOM:
+        handleJoinRoom(data);
+        break;
+    case NetworkConstants::MSG_LEAVE_ROOM:
+        handleLeaveRoom(data);
         break;
     default:
         sendResponse(NetworkConstants::MSG_ERROR, false, "Unknown message type");
@@ -84,6 +97,7 @@ void RequestWorker::sendResponse(int type, bool success,
     }
 }
 
+// ---------- Authentication Handlers ----------
 void RequestWorker::handleRegister(const QJsonObject& data) {
     qDebug() << "[Worker] handleRegister called";
 
@@ -160,7 +174,8 @@ void RequestWorker::handleLogin(const QJsonObject& data) {
     QString hashedInput = AuthManager::hashPassword(password);
 
     if (u->passwordHash == hashedInput) {
-        clientUsername = username;
+        // ✅ Store username in socket property for future requests
+        socket->setProperty("username", username);
 
         QJsonObject responseData;
         responseData["user"] = NetworkProtocol::userToJson(*u);
@@ -262,20 +277,17 @@ void RequestWorker::handleGetUser(const QJsonObject& data) {
 }
 
 void RequestWorker::handleUpdateUser(const QJsonObject& data) {
-    // ۱. بررسی می‌کنیم که کلاینت حتماً هم oldUsername و هم آبجکت user را فرستاده باشد
     if (!data.contains("oldUsername") || !data.contains("user")) {
         sendResponse(NetworkConstants::MSG_UPDATE_USER, false, "Missing oldUsername or user data");
         return;
     }
 
-    // ۲. استخراج نام کاربری قدیم و اطلاعات جدید
     QString oldUsername = data["oldUsername"].toString();
     QJsonObject userObj = data["user"].toObject();
     user updatedUser = NetworkProtocol::userFromJson(userObj);
 
     qDebug() << "[Worker] Updating user profile. Old username:" << oldUsername << ", New username:" << updatedUser.username;
 
-    // ۳. اگر پسورد هش شده در کلاینت خالی است، به این معنی است که کاربر پسوردش را عوض نکرده.
     if (updatedUser.passwordHash.isEmpty()) {
         user* existingUser = storageManager->getuser(oldUsername);
         if (existingUser) {
@@ -286,14 +298,106 @@ void RequestWorker::handleUpdateUser(const QJsonObject& data) {
             return;
         }
     } else {
-        // اگر پسورد جدیدی وارد شده، آن را هش می‌کنیم
         updatedUser.passwordHash = AuthManager::hashPassword(updatedUser.passwordHash);
     }
 
-    // ۴. آپدیت در دیتابیس با هر دو مقدار
     if (storageManager->updateuser(oldUsername, updatedUser)) {
         sendResponse(NetworkConstants::MSG_UPDATE_USER, true, "User updated successfully");
     } else {
         sendResponse(NetworkConstants::MSG_UPDATE_USER, false, "Failed to update user. Username might be taken.");
+    }
+}
+
+// ---------- Room Handlers ----------
+void RequestWorker::handleCreateRoom(const QJsonObject& data) {
+    qDebug() << "[Worker] handleCreateRoom called";
+
+    // Retrieve username from socket property
+    QString username = socket->property("username").toString();
+    if (username.isEmpty()) {
+        sendResponse(NetworkConstants::MSG_ROOM_ERROR, false, "You must be logged in to create a room.");
+        return;
+    }
+
+    if (!data.contains("roomName") || !data.contains("port") ||
+        !data.contains("gameSettings")) {
+        sendResponse(NetworkConstants::MSG_ROOM_ERROR, false, "Missing room creation data");
+        return;
+    }
+
+    QString roomName = data["roomName"].toString();
+    quint16 port = static_cast<quint16>(data["port"].toInt());
+    GameSettings settings = NetworkProtocol::gameSettingsFromJson(data["gameSettings"].toObject());
+    QString password = data["password"].toString();
+
+    Room createdRoom;
+    if (roomManager->createRoom(roomName, port, username, socket, settings, password, &createdRoom)) {
+        QJsonObject responseData;
+        responseData["room"] = NetworkProtocol::roomToJson(createdRoom);
+        sendResponse(NetworkConstants::MSG_ROOM_CREATED, true, "Room created successfully", responseData);
+    } else {
+        sendResponse(NetworkConstants::MSG_ROOM_ERROR, false, "Failed to create room. Port may be in use.");
+    }
+}
+
+void RequestWorker::handleJoinRoom(const QJsonObject& data) {
+    qDebug() << "[Worker] handleJoinRoom called";
+
+    QString username = socket->property("username").toString();
+    if (username.isEmpty()) {
+        sendResponse(NetworkConstants::MSG_ROOM_ERROR, false, "You must be logged in to join a room.");
+        return;
+    }
+
+    if (!data.contains("ip") || !data.contains("port")) {
+        sendResponse(NetworkConstants::MSG_ROOM_ERROR, false, "Missing join room data");
+        return;
+    }
+
+    quint16 port = static_cast<quint16>(data["port"].toInt());
+    QString password = data["password"].toString();
+
+    Room joinedRoom;
+    if (roomManager->joinRoom(port, username, socket, password, &joinedRoom)) {
+        QJsonObject responseData;
+        responseData["room"] = NetworkProtocol::roomToJson(joinedRoom);
+        sendResponse(NetworkConstants::MSG_ROOM_JOINED, true, "Joined room successfully", responseData);
+
+        // Notify the host about the guest joining
+        Room* room = roomManager->getRoom(port);
+        if (room && room->hostSocket) {
+            QJsonObject notifyData;
+            notifyData["playerName"] = username;
+            QString notifyMsg = NetworkProtocol::buildMessage(NetworkConstants::MSG_PLAYER_JOINED, notifyData);
+            room->hostSocket->write(notifyMsg.toUtf8());
+            room->hostSocket->flush();
+            qDebug() << "[Worker] Notified host about guest join";
+        }
+    } else {
+        sendResponse(NetworkConstants::MSG_ROOM_ERROR, false, "Failed to join room. Room not found, full, or password incorrect.");
+    }
+}
+
+void RequestWorker::handleLeaveRoom(const QJsonObject& data) {
+    qDebug() << "[Worker] handleLeaveRoom called";
+
+    QString username = socket->property("username").toString();
+    if (username.isEmpty()) {
+        sendResponse(NetworkConstants::MSG_ROOM_ERROR, false, "You must be logged in to leave a room.");
+        return;
+    }
+
+    // Expect the client to send the port of the room to leave
+    if (!data.contains("port")) {
+        sendResponse(NetworkConstants::MSG_ROOM_ERROR, false, "Missing port for leave room");
+        return;
+    }
+
+    quint16 port = static_cast<quint16>(data["port"].toInt());
+
+    if (roomManager->leaveRoom(port, username)) {
+        sendResponse(NetworkConstants::MSG_SUCCESS, true, "Left room successfully");
+    } else {
+        sendResponse(NetworkConstants::MSG_ROOM_ERROR, false, "Failed to leave room. You may not be in this room.");
     }
 }

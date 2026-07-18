@@ -214,20 +214,17 @@ void ClientManager::joinRoom(const QString& ip, quint16 port, const QString& pas
     qDebug() << "[Client] Join room request sent to" << ip << ":" << port;
 }
 
-void ClientManager::leaveRoom() {
+void ClientManager::leaveRoom(quint16 port) {
     if (!isConnected()) {
+        qDebug() << "[Client] Not connected, cannot leave room";
         return;
     }
 
     QJsonObject data;
-    // Could include room ID later
-    QString message = NetworkProtocol::buildMessage(
-        NetworkConstants::MSG_LEAVE_ROOM,
-        data
-        );
-
+    data["port"] = static_cast<int>(port);
+    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_LEAVE_ROOM, data);
     socket->write(message.toUtf8());
-    qDebug() << "[Client] Leave room request sent";
+    qDebug() << "[Client] Leave room request sent for port:" << port;
 }
 
 // ---------- Slots ----------

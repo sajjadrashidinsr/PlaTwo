@@ -6,26 +6,24 @@ ThreadedServer::ThreadedServer(QObject* parent)
     : QObject(parent)
     , tcpServer(nullptr)
     , storageManager(nullptr)
+    , roomManager(nullptr)
     , threadPool(nullptr) {
 
-
     storageManager = new storage_manager();
+    roomManager = new RoomManager(this);
 
     tcpServer = new QTcpServer(this);
 
     threadPool = new QThreadPool(this);
-
     threadPool->setMaxThreadCount(10);
-
     threadPool->setExpiryTimeout(30000);
 
     connect(tcpServer, &QTcpServer::newConnection,
             this, &ThreadedServer::onNewConnection);
 
     qDebug() << "[Server] ThreadPool created with max threads:" << threadPool->maxThreadCount();
-
     qDebug() << "[Server] Storage manager initialized";
-
+    qDebug() << "[Server] RoomManager initialized";
 }
 
 ThreadedServer::~ThreadedServer() {
@@ -145,6 +143,7 @@ void ThreadedServer::onReadyRead() {
                 client,
                 message,
                 storageManager,
+                roomManager,
                 this
                 );
 

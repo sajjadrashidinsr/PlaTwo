@@ -8,8 +8,8 @@
 #include <QThreadPool>
 #include <QMutex>
 #include "storage_manager.h"
+#include "roommanager.h"
 #include "network_constants.h"
-
 
 class RequestWorker;
 
@@ -39,6 +39,7 @@ private:
 
     QTcpServer* tcpServer;
     storage_manager* storageManager;
+    RoomManager* roomManager;
     QThreadPool* threadPool;
 
     QMap<QTcpSocket*, QString> clientBuffer;
