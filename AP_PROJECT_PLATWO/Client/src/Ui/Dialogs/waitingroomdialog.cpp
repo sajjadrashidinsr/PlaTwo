@@ -31,7 +31,6 @@ void WaitingRoomDialog::setClientManager(ClientManager* client)
 {
     m_clientManager = client;
     if (m_clientManager) {
-        // Connect to dynamic updates
         connect(m_clientManager, &ClientManager::playerJoined,
                 this, &WaitingRoomDialog::onPlayerJoined);
         connect(m_clientManager, &ClientManager::playerLeft,
@@ -93,22 +92,21 @@ void WaitingRoomDialog::onCopyAddressClicked()
 void WaitingRoomDialog::onLeaveClicked()
 {
     if (m_clientManager) {
-        m_clientManager->leaveRoom();
+        m_clientManager->leaveRoom(m_room.port);  // ✅ pass port
     }
     emit leaveRoom();
     accept();
 }
 
-// ---------- Phase 2: Dynamic Updates ----------
 void WaitingRoomDialog::onPlayerJoined(const QString& playerName)
 {
     qDebug() << "[WaitingRoom] Player joined:" << playerName;
     m_room.guestUsername = playerName;
     updateInfo();
-    // Optional: show a notification
     if (m_isHost) {
         ui->statusLabel->setText("Guest " + playerName + " has joined! Ready to start game.");
     }
+
 }
 
 void WaitingRoomDialog::onPlayerLeft(const QString& playerName)
@@ -121,11 +119,11 @@ void WaitingRoomDialog::onPlayerLeft(const QString& playerName)
             ui->statusLabel->setText("Guest " + playerName + " left. Waiting for a new guest...");
         }
     }
+
 }
 
 void WaitingRoomDialog::onRoomError(const QString& error)
 {
     QMessageBox::critical(this, "Room Error", error);
-    // Optionally close the dialog
     reject();
 }

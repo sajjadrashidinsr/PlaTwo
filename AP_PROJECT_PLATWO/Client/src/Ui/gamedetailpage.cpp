@@ -55,7 +55,7 @@ void GameDetailPage::loadData()
 {
     if (!currentUser || !clientManager) return;
 
-    clientManager->sendGetUser(currentUser->username);
+    //clientManager->sendGetUser(currentUser->username);
 
 }
 
@@ -105,7 +105,7 @@ void GameDetailPage::onStartNewGameClicked()
                     WaitingRoomDialog* waiting = new WaitingRoomDialog(true, room, this);
                     waiting->setAttribute(Qt::WA_DeleteOnClose);
                     waiting->setClientManager(clientManager);
-                    waiting->exec();
+                    waiting->show();
                 });
 
         connect(&hostDlg, &HostGameDialog::roomCreationFailed,
@@ -127,7 +127,7 @@ void GameDetailPage::onStartNewGameClicked()
                     WaitingRoomDialog* waiting = new WaitingRoomDialog(false, room, this);
                     waiting->setAttribute(Qt::WA_DeleteOnClose);
                     waiting->setClientManager(clientManager);
-                    waiting->exec();
+                    waiting->show();
                 });
 
         connect(&joinDlg, &JoinGameDialog::joinFailed,

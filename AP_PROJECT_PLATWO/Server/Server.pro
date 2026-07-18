@@ -11,6 +11,8 @@ DEFINES += BUILD_SERVER
 
 SOURCES += \
     main.cpp \
+    src/Models/room.cpp \
+    src/Server/roommanager.cpp \
     src/Server/threaded_server.cpp \
     src/Storage/storage_manager.cpp \
     src/Controller/auth_manager.cpp \
@@ -18,6 +20,9 @@ SOURCES += \
     src/Worker/request_worker.cpp
 
 HEADERS += \
+    src/Models/GameSettings.h \
+    src/Models/room.h \
+    src/Server/roommanager.h \
     src/Server/threaded_server.h \
     src/Storage/storage_manager.h \
     src/Controller/auth_manager.h \

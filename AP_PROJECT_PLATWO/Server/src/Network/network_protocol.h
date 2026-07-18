@@ -6,10 +6,12 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include "user.h"
+#include "../Models/GameSettings.h"
+#include "../Models/room.h"
 
 class NetworkProtocol {
 public:
-    // تبدیل user به JSON - تعریف inline
+    // ---------- User ----------
     static inline QJsonObject userToJson(const user& u) {
         QJsonObject obj;
         obj["username"] = u.username;
@@ -36,7 +38,6 @@ public:
         return obj;
     }
 
-    // تبدیل JSON به user - تعریف inline
     static inline user userFromJson(const QJsonObject& obj) {
         user u;
         u.username = obj["username"].toString();
@@ -63,7 +64,51 @@ public:
         return u;
     }
 
-    // ساخت پیام با داده JSON
+    // ---------- GameSettings ----------
+    static inline QJsonObject gameSettingsToJson(const GameSettings& settings) {
+        QJsonObject obj;
+        obj["boardSize"] = settings.boardSize;
+        obj["timed"] = settings.timed;
+        obj["minutes"] = settings.minutes;
+        obj["seconds"] = settings.seconds;
+        return obj;
+    }
+
+    static inline GameSettings gameSettingsFromJson(const QJsonObject& obj) {
+        GameSettings settings;
+        settings.boardSize = obj["boardSize"].toInt(3);
+        settings.timed = obj["timed"].toBool(false);
+        settings.minutes = obj["minutes"].toInt(0);
+        settings.seconds = obj["seconds"].toInt(0);
+        return settings;
+    }
+
+    // ---------- Room ----------
+    static inline QJsonObject roomToJson(const Room& room) {
+        QJsonObject obj;
+        obj["roomName"] = room.roomName;
+        obj["port"] = static_cast<int>(room.port);
+        obj["hostUsername"] = room.hostUsername;
+        obj["guestUsername"] = room.guestUsername;
+        obj["password"] = room.password;
+        obj["gameSettings"] = gameSettingsToJson(room.gameSettings);
+        obj["status"] = static_cast<int>(room.status);
+        return obj;
+    }
+
+    static inline Room roomFromJson(const QJsonObject& obj) {
+        Room room;
+        room.roomName = obj["roomName"].toString();
+        room.port = static_cast<quint16>(obj["port"].toInt(1234));
+        room.hostUsername = obj["hostUsername"].toString();
+        room.guestUsername = obj["guestUsername"].toString();
+        room.password = obj["password"].toString();
+        room.gameSettings = gameSettingsFromJson(obj["gameSettings"].toObject());
+        room.status = static_cast<RoomStatus>(obj["status"].toInt(0));
+        return room;
+    }
+
+    // ---------- Generic ----------
     static QString buildMessage(int type, const QJsonObject& data) {
         QJsonObject obj;
         obj["type"] = type;
@@ -72,7 +117,6 @@ public:
         return QString(doc.toJson(QJsonDocument::Compact)) + "\n";
     }
 
-    // تجزیه پیام دریافتی
     static bool parseMessage(const QString& message, int& type, QJsonObject& data) {
         QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
         if (!doc.isObject()) {
