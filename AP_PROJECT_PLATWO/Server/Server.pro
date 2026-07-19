@@ -17,7 +17,10 @@ SOURCES += \
     src/Storage/storage_manager.cpp \
     src/Controller/auth_manager.cpp \
     src/User/user.cpp \
-    src/Worker/request_worker.cpp
+    src/Worker/request_worker.cpp \
+    src/Game/BoardModel.cpp \
+    src/Game/GameController.cpp \
+    src/Game/Player.cpp
 
 HEADERS += \
     src/Models/GameSettings.h \
@@ -29,7 +32,10 @@ HEADERS += \
     src/User/user.h \
     src/Worker/request_worker.h \
     src/Network/network_constants.h \
-    src/Network/network_protocol.h
+    src/Network/network_protocol.h \
+    src/Game/BoardModel.h \
+    src/Game/GameController.h \
+    src/Game/Player.h
 
 INCLUDEPATH += \
     $$PWD/src \
@@ -38,4 +44,5 @@ INCLUDEPATH += \
     $$PWD/src/Controller \
     $$PWD/src/User \
     $$PWD/src/Worker \
-    $$PWD/src/Network
+    $$PWD/src/Network \
+    $$PWD/src/Game

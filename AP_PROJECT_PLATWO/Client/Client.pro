@@ -24,7 +24,9 @@ SOURCES += \
     src/Ui/editprofilepage.cpp \
     src/Ui/gamedetailpage.cpp \
     src/Network/client_manager.cpp \
-    src/User/user.cpp
+    src/User/user.cpp \
+    src/Ui/GameWidget/GameBoard.cpp \
+    src/Ui/GameWidget/GameWidget.cpp
 
 HEADERS += \
     src/Models/GameSettings.h \
@@ -44,7 +46,9 @@ HEADERS += \
     src/Network/client_manager.h \
     src/Network/network_constants.h \
     src/Network/network_protocol.h \
-    src/User/user.h
+    src/User/user.h \
+    src/Ui/GameWidget/GameBoard.h \
+    src/Ui/GameWidget/GameWidget.h
 
 FORMS += \
     src/Ui/Dialogs/hostgamedialog.ui \
@@ -58,7 +62,8 @@ FORMS += \
     src/Ui/MainMenuWindow.ui \
     src/Ui/mainmenu.ui \
     src/Ui/editprofilepage.ui \
-    src/Ui/gamedetailpage.ui
+    src/Ui/gamedetailpage.ui \
+    src/Ui/GameWidget/GameWidget.ui
 
 RESOURCES += \
     resources/resources.qrc
@@ -67,5 +72,6 @@ INCLUDEPATH += \
     $$PWD/src \
     $$PWD/src/Ui \
     $$PWD/src/Network \
-    $$PWD/src/User
-    $$PWD/src/Models
+    $$PWD/src/User \
+    $$PWD/src/Models \
+    $$PWD/src/Ui/GameWidget
