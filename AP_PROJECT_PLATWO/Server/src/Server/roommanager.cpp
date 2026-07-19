@@ -163,3 +163,120 @@ QList<Room> RoomManager::getAllRooms() const
     QMutexLocker locker(&mutex);
     return rooms.values();
 }
+
+bool RoomManager::startGame(quint16 port, int boardSize)
+{
+    QMutexLocker locker(&mutex);
+    
+    if (!rooms.contains(port)) return false;
+    Room& room = rooms[port];
+    if (room.gameStarted) return false;
+    if (!room.hasGuest()) return false;
+    
+    room.gameController = std::make_unique<GameController>(boardSize, this);
+    room.gameController->setPlayerNames(room.hostUsername, room.guestUsername);
+    room.gameController->getPlayer(0)->setPlayerId(0);
+    room.gameController->getPlayer(1)->setPlayerId(1);
+    
+    room.gameStarted = true;
+    room.status = RoomStatus::InProgress;
+    room.currentPlayerId = 0;
+    
+    return true;
+}
+
+bool RoomManager::processGameMove(quint16 port, const QPoint& p1, const QPoint& p2,
+                                  int playerId, QVector<QPoint>& completedBoxes)
+{
+    QMutexLocker locker(&mutex);
+    
+    if (!rooms.contains(port)) return false;
+    Room& room = rooms[port];
+    if (!room.gameController) return false;
+    if (room.gameController->isGameOver()) return false;
+    if (room.currentPlayerId != playerId) return false;
+    
+    const BoardModel* model = room.gameController->getModel();
+    if (!model->isValidMove(p1, p2)) return false;
+    
+    completedBoxes = room.gameController->getModel()->makeMove(p1, p2, playerId);
+    
+    if (!completedBoxes.isEmpty()) {
+        Player* player = room.gameController->getPlayer(playerId);
+        if (player) player->addScore(completedBoxes.size());
+    } else {
+        room.currentPlayerId = (room.currentPlayerId == 0) ? 1 : 0;
+    }
+    
+    if (room.gameController->isGameOver()) {
+        room.status = RoomStatus::Finished;
+    }
+    
+    return true;
+}
+
+bool RoomManager::endGame(quint16 port, int& winner, int& p1Score, int& p2Score)
+{
+    QMutexLocker locker(&mutex);
+    if (!rooms.contains(port)) return false;
+    Room& room = rooms[port];
+    if (!room.gameController) return false;
+    
+    winner = room.gameController->getWinner();
+    p1Score = room.gameController->getPlayer(0)->getScore();
+    p2Score = room.gameController->getPlayer(1)->getScore();
+    
+    room.status = RoomStatus::Finished;
+    room.gameStarted = false;
+    
+    return true;
+}
+
+QJsonObject RoomManager::getGameState(quint16 port)
+{
+    QMutexLocker locker(&mutex);
+    QJsonObject state;
+    if (!rooms.contains(port)) return state;
+    Room& room = rooms[port];
+    if (!room.gameController) return state;
+    
+    const BoardModel* model = room.gameController->getModel();
+    int size = model->getBoardSize();
+    
+    QJsonArray horizontalLines, verticalLines, boxes;
+    
+    for (int row = 0; row < size; ++row) {
+        QJsonArray rowData;
+        for (int col = 0; col < size - 1; ++col) {
+            rowData.append(model->getLine(row, col, BoardModel::LineType::Horizontal));
+        }
+        horizontalLines.append(rowData);
+    }
+    
+    for (int row = 0; row < size - 1; ++row) {
+        QJsonArray rowData;
+        for (int col = 0; col < size; ++col) {
+            rowData.append(model->getLine(row, col, BoardModel::LineType::Vertical));
+        }
+        verticalLines.append(rowData);
+    }
+    
+    for (int row = 0; row < size - 1; ++row) {
+        QJsonArray rowData;
+        for (int col = 0; col < size - 1; ++col) {
+            rowData.append(model->getBox(row, col));
+        }
+        boxes.append(rowData);
+    }
+    
+    state["boardSize"] = size;
+    state["horizontalLines"] = horizontalLines;
+    state["verticalLines"] = verticalLines;
+    state["boxes"] = boxes;
+    state["player1Score"] = room.gameController->getPlayer(0)->getScore();
+    state["player2Score"] = room.gameController->getPlayer(1)->getScore();
+    state["currentPlayer"] = room.currentPlayerId;
+    state["gameOver"] = room.gameController->isGameOver();
+    
+    return state;
+}
