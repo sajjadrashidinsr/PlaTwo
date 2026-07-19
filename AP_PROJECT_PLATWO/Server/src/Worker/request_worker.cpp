@@ -72,6 +72,18 @@ void RequestWorker::processMessage(const QString& message) {
     case NetworkConstants::MSG_LEAVE_ROOM:
         handleLeaveRoom(data);
         break;
+    case NetworkConstants::MSG_GAME_START:
+        handleGameStart(data);
+        break;
+    case NetworkConstants::MSG_GAME_MOVE:
+        handleGameMove(data);
+        break;
+    case NetworkConstants::MSG_GAME_ABORTED:
+        handleGameAbort(data);
+        break;
+    case NetworkConstants::MSG_GAME_READY:
+        handleGameReady(data);
+        break;    
     default:
         sendResponse(NetworkConstants::MSG_ERROR, false, "Unknown message type");
         break;
