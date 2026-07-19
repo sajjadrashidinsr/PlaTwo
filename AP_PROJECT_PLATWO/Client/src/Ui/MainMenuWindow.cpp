@@ -21,17 +21,14 @@ MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidge
     qDebug() << "[MainMenuWindow] loggedInUser:" << (loggedInUser ? loggedInUser->username : "null");
     qDebug() << "[MainMenuWindow] clientManager:" << (client ? "valid" : "null");
 
-    // ===== مرحله 1: راه‌اندازی UI =====
     qDebug() << "[MainMenuWindow] Setting up UI...";
     ui->setupUi(this);
     qDebug() << "[MainMenuWindow] UI setup complete";
 
-    // ===== مرحله 2: تنظیم ویژگی‌های پنجره =====
     this->setAttribute(Qt::WA_DeleteOnClose, true);
     this->setAttribute(Qt::WA_StyledBackground, true);
     qDebug() << "[MainMenuWindow] Attributes set";
 
-    // ===== مرحله 3: ایجاد MainMenu =====
     qDebug() << "[MainMenuWindow] Creating MainMenu widget...";
     mainMenuWidget = new MainMenu(this);
     if (!mainMenuWidget) {
@@ -41,7 +38,6 @@ MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidge
     }
     qDebug() << "[MainMenuWindow] MainMenu created";
 
-    // ===== مرحله 4: ایجاد GameDetailPage =====
     qDebug() << "[MainMenuWindow] Creating GameDetailPage...";
     gameDetailPage = new GameDetailPage(currentUser, clientManager, this);
     if (!gameDetailPage) {
@@ -51,7 +47,6 @@ MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidge
     }
     qDebug() << "[MainMenuWindow] GameDetailPage created";
 
-    // ===== مرحله 5: ایجاد EditProfilePage =====
     qDebug() << "[MainMenuWindow] Creating EditProfilePage...";
     editProfilePage = new EditProfilePage(currentUser, clientManager, this);
     if (!editProfilePage) {
@@ -61,7 +56,6 @@ MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidge
     }
     qDebug() << "[MainMenuWindow] EditProfilePage created";
 
-    // ===== مرحله 6: اضافه کردن به StackedWidget =====
     qDebug() << "[MainMenuWindow] Adding widgets to stacked widget...";
     ui->stackedWidget->addWidget(mainMenuWidget);
     ui->stackedWidget->addWidget(gameDetailPage);
@@ -69,7 +63,6 @@ MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidge
     ui->stackedWidget->setCurrentIndex(0);
     qDebug() << "[MainMenuWindow] Widgets added to stacked widget";
 
-    // ===== مرحله 7: اتصال سیگنال‌ها =====
     qDebug() << "[MainMenuWindow] Connecting signals...";
     connect(mainMenuWidget, &MainMenu::gameSelected, this, &MainMenuWindow::onGameSelected);
     connect(mainMenuWidget, &MainMenu::editProfileRequested, this, &MainMenuWindow::onEditProfileRequested);
@@ -96,9 +89,19 @@ MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidge
                     gameDetailPage->setUser(currentUser);
                 }
             });
+    
+    connect(clientManager, &ClientManager::gameStarted,
+            this, &MainMenuWindow::onGameStarted);
+    connect(clientManager, &ClientManager::gameStateReceived,
+            this, &MainMenuWindow::onGameStateReceived);
+    connect(clientManager, &ClientManager::gameOverReceived,
+            this, &MainMenuWindow::onGameOverReceived);
+    connect(clientManager, &ClientManager::gameAborted,
+            this, &MainMenuWindow::onGameAborted);        
+    
+            
     qDebug() << "[MainMenuWindow] Signals connected";
 
-    // ===== مرحله 8: تنظیم آیکون =====
     qDebug() << "[MainMenuWindow] Setting window icon...";
     QIcon icon(":/icons/logo.png");
     if (!icon.isNull()) {
@@ -108,7 +111,6 @@ MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidge
         qDebug() << "[MainMenuWindow] WARNING: Logo icon not found!";
     }
 
-    // ===== مرحله 9: تنظیم اطلاعات کاربر =====
     qDebug() << "[MainMenuWindow] Setting user info...";
     setUserInfo(currentUser);
     qDebug() << "[MainMenuWindow] User info set";
@@ -168,12 +170,17 @@ void MainMenuWindow::onBackToMenu() {
     ui->stackedWidget->setCurrentIndex(0);
 }
 
-void MainMenuWindow::onStartNewGame(GameType gameType, bool isHost) {
-    qDebug() << "[MainMenuWindow] onStartNewGame";
-    QMessageBox::information(this, "New Game",
-                             QString("Starting game %1 as %2")
-                                 .arg(static_cast<int>(gameType))
-                                 .arg(isHost ? "Host" : "Guest"));
+void MainMenuWindow::onStartNewGame(GameType gameType, bool isHost)
+{
+    if (gameType == GameType::DotsAndBoxes) {
+        m_isHost = isHost;
+        m_currentRoom.port = 1234;
+        m_currentRoom.gameSettings.boardSize = 5;
+        m_currentRoom.hostUsername = currentUser ? currentUser->username : "Host";
+        m_currentRoom.guestUsername = "Guest";
+
+        showGameWidget();
+    }
 }
 
 void MainMenuWindow::onEditProfileRequested() {
@@ -182,4 +189,83 @@ void MainMenuWindow::onEditProfileRequested() {
         editProfilePage->loadUserData();
         ui->stackedWidget->setCurrentIndex(2);
     }
+}
+
+void MainMenuWindow::showGameWidget()
+{
+    if (!m_gameWidget) {
+        m_gameWidget = new GameWidget(this);
+        m_gameWidget->setClientManager(clientManager);
+
+        connect(m_gameWidget, &GameWidget::leaveGame,
+                this, &MainMenuWindow::onLeaveGame);
+        connect(m_gameWidget, &GameWidget::moveMade,
+                this, [this](const QPoint& p1, const QPoint& p2) {
+                    QJsonObject moveData;
+                    moveData["port"] = static_cast<int>(m_currentRoom.port);
+                    moveData["x1"] = p1.x();
+                    moveData["y1"] = p1.y();
+                    moveData["x2"] = p2.x();
+                    moveData["y2"] = p2.y();
+                    moveData["playerId"] = m_isHost ? 0 : 1;
+                    clientManager->sendGameMove(moveData);
+                });
+
+        ui->stackedWidget->addWidget(m_gameWidget);
+    }
+
+    m_gameWidget->setRoomInfo(m_currentRoom.port, m_isHost);
+
+    if (m_isHost) {
+        int boardSize = m_currentRoom.gameSettings.boardSize;
+        clientManager->sendGameStart(m_currentRoom.port, boardSize);
+        m_gameWidget->startGame(boardSize);
+    }
+
+    ui->stackedWidget->setCurrentWidget(m_gameWidget);
+}
+
+void MainMenuWindow::onGameStarted(const QJsonObject& data)
+{
+    int boardSize = data["boardSize"].toInt();
+
+    if (!m_isHost && m_gameWidget) {
+        m_gameWidget->startGame(boardSize);
+    }
+
+    if (m_gameWidget) {
+        QString hostName = data["hostUsername"].toString();
+        QString guestName = data["guestUsername"].toString();
+        m_gameWidget->setPlayers(hostName, guestName);
+    }
+}
+
+void MainMenuWindow::onGameStateReceived(const QJsonObject& state)
+{
+    if (m_gameWidget) {
+        m_gameWidget->onGameStateReceived(state);
+    }
+}
+
+void MainMenuWindow::onGameOverReceived(const QJsonObject& data)
+{
+    if (m_gameWidget) {
+        m_gameWidget->onGameOverReceived(data);
+    }
+}
+
+void MainMenuWindow::onGameAborted(const QString& message)
+{
+    QMessageBox::information(this, "Game Aborted", message);
+    onLeaveGame();
+}
+
+void MainMenuWindow::onLeaveGame()
+{
+    if (m_gameWidget) {
+        ui->stackedWidget->removeWidget(m_gameWidget);
+        m_gameWidget->deleteLater();
+        m_gameWidget = nullptr;
+    }
+    onBackToMenu();
 }
