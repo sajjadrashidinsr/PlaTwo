@@ -42,6 +42,11 @@ private:
     void handleJoinRoom(const QJsonObject& data);
     void handleLeaveRoom(const QJsonObject& data);
 
+    void handleGameStart(const QJsonObject& data);
+    void handleGameMove(const QJsonObject& data);
+    void handleGameAbort(const QJsonObject& data);
+    void handleGameReady(const QJsonObject& data);
+
     QTcpSocket* socket;
     QString messageBuffer;
     storage_manager* storageManager;
