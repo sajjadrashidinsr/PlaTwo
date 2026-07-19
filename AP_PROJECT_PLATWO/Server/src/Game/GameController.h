@@ -1,0 +1,49 @@
+
+#ifndef GAMECONTROLLER_H
+#define GAMECONTROLLER_H
+
+#include <QObject>
+#include <memory>
+#include <QPoint>  
+
+class BoardModel;
+class Player;
+
+class GameController : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit GameController(int boardSize, QObject* parent = nullptr);
+    ~GameController() override;
+    
+    void setPlayerNames(const QString& player1Name, const QString& player2Name);
+    bool makeMove(const QPoint& p1, const QPoint& p2);
+    const Player* getCurrentPlayer() const;
+    const Player* getPlayer(int id) const;
+    const BoardModel* getModel() const { return m_model.get(); }
+    bool isGameOver() const;
+    int getWinner() const;
+    void resetGame();
+    void newGame(int boardSize);
+    
+    void switchPlayer();
+    
+signals:
+    void gameStateChanged();
+
+private slots:
+    void onBoxCompleted(int row, int col, int playerId);
+
+private:
+    void checkGameOver();
+    void updateScore(int playerId, int boxesCompleted);
+
+    std::unique_ptr<BoardModel> m_model;
+    std::unique_ptr<Player> m_player1;
+    std::unique_ptr<Player> m_player2;
+    int m_currentPlayerId;
+    bool m_gameOver;
+};
+
+#endif // GAMECONTROLLER_H
