@@ -36,6 +36,11 @@ public:
     void joinRoom(const QString& ip, quint16 port, const QString& password = QString());
     void leaveRoom(quint16 port);
 
+    void sendGameStart(quint16 port, int boardSize);
+    void sendGameMove(const QJsonObject& moveData);
+    void sendGameAbort(quint16 port);
+    void sendGameReady(quint16 port, bool ready);
+
 signals:
     // Connection
     void connected();
@@ -56,6 +61,12 @@ signals:
     void playerJoined(const QString& playerName);
     void playerLeft(const QString& playerName);
     void roomError(const QString& error);
+
+    void gameStarted(const QJsonObject& data);
+    void gameStateReceived(const QJsonObject& state);
+    void gameOverReceived(const QJsonObject& data);
+    void gameAborted(const QString& message);
+    void gameError(const QString& error);
 
 private slots:
     void onReadyRead();
