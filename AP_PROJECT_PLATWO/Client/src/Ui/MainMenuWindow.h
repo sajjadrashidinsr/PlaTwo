@@ -6,6 +6,8 @@
 #include "mainmenu.h"
 #include "gamedetailpage.h"
 #include "editprofilepage.h"
+#include "GameWidget.h"
+#include "room.h"
 
 class ClientManager;
 
@@ -35,6 +37,12 @@ private slots:
     void onStartNewGame(GameType gameType, bool isHost);
     void onEditProfileRequested();
 
+    void onGameStarted(const QJsonObject& data);
+    void onGameStateReceived(const QJsonObject& state);
+    void onGameOverReceived(const QJsonObject& data);
+    void onGameAborted(const QString& message);
+    void onLeaveGame();
+
 private:
     Ui::MainMenuWindow *ui;
     user* currentUser;
@@ -43,6 +51,12 @@ private:
     MainMenu *mainMenuWidget;
     GameDetailPage *gameDetailPage;
     EditProfilePage *editProfilePage;
+
+    GameWidget* m_gameWidget = nullptr;
+    Room m_currentRoom;
+    bool m_isHost = false;
+
+    void showGameWidget();
 };
 
 #endif // MAINMENUWINDOW_H
