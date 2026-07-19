@@ -35,6 +35,11 @@ public:
 
     bool hasGuest() const { return !guestUsername.isEmpty(); }
     bool isPasswordProtected() const { return !password.isEmpty(); }
+
+    std::unique_ptr<GameController> gameController;
+    bool gameStarted = false;
+    QString gameType = "DotsAndBoxes";
+    int currentPlayerId = 0;
 };
 
 #endif // ROOM_H
