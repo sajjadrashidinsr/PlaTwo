@@ -372,8 +372,72 @@ void ClientManager::processMessage(const QString& message) {
         emit roomError(msg);
         break;
     }
+    case NetworkConstants::MSG_GAME_START:
+        emit gameStarted(data);
+        break;
+    case NetworkConstants::MSG_GAME_STATE:
+        emit gameStateReceived(data);
+        break;
+    case NetworkConstants::MSG_GAME_OVER:
+        emit gameOverReceived(data);
+        break;
+    case NetworkConstants::MSG_GAME_ABORTED:
+        emit gameAborted(data["message"].toString());
+        break;
+    case NetworkConstants::MSG_GAME_ERROR:
+        emit gameError(data["message"].toString());
+        break;
     default:
         emit error("Unknown response type from server");
         break;
     }
+}
+
+void ClientManager::sendGameStart(quint16 port, int boardSize)
+{
+    if (!isConnected()) {
+        emit gameError("Not connected to server");
+        return;
+    }
+    
+    QJsonObject data;
+    data["port"] = static_cast<int>(port);
+    data["boardSize"] = boardSize;
+    
+    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_START, data);
+    socket->write(message.toUtf8());
+}
+
+void ClientManager::sendGameMove(const QJsonObject& moveData)
+{
+    if (!isConnected()) {
+        emit gameError("Not connected to server");
+        return;
+    }
+    
+    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_MOVE, moveData);
+    socket->write(message.toUtf8());
+}
+
+void ClientManager::sendGameAbort(quint16 port)
+{
+    if (!isConnected()) return;
+    
+    QJsonObject data;
+    data["port"] = static_cast<int>(port);
+    
+    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_ABORTED, data);
+    socket->write(message.toUtf8());
+}
+
+void ClientManager::sendGameReady(quint16 port, bool ready)
+{
+    if (!isConnected()) return;
+    
+    QJsonObject data;
+    data["port"] = static_cast<int>(port);
+    data["ready"] = ready;
+    
+    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_READY, data);
+    socket->write(message.toUtf8());
 }
