@@ -31,6 +31,12 @@ public:
     Room* getRoom(quint16 port);
     QList<Room> getAllRooms() const;
 
+    bool startGame(quint16 port, int boardSize);
+    bool processGameMove(quint16 port, const QPoint& p1, const QPoint& p2,
+                         int playerId, QVector<QPoint>& completedBoxes);
+    bool endGame(quint16 port, int& winner, int& p1Score, int& p2Score);
+    QJsonObject getGameState(quint16 port);
+
 signals:
     void roomCreated(quint16 port);
     void roomJoined(quint16 port, const QString& guestUsername);

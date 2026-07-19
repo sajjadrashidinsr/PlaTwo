@@ -4,6 +4,7 @@
 #include <QString>
 #include "GameSettings.h"
 #include <QTcpSocket>
+#include "GameController.h"
 
 enum class RoomStatus
 {
