@@ -34,6 +34,15 @@ enum MessageType {
     MSG_PLAYER_JOINED = 202,
     MSG_PLAYER_LEFT = 203,
     MSG_ROOM_ERROR = 204
+
+    // Client <-> Server (Game Play)
+    MSG_GAME_START = 300,
+    MSG_GAME_MOVE = 301,
+    MSG_GAME_STATE = 302,
+    MSG_GAME_OVER = 303,
+    MSG_GAME_ABORTED = 304,
+    MSG_GAME_READY = 305,
+    MSG_GAME_ERROR = 306
 };
 }
 
