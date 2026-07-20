@@ -1,16 +1,11 @@
-/**
- * @file GameBoard.h
- */
-
 #ifndef GAMEBOARD_H
 #define GAMEBOARD_H
 
 #include <QWidget>
-#include <QPoint>      // ← این خط را اضافه کنید
+#include <QPoint>
 #include <QVector>
 #include <QPair>
-
-class GameController;
+#include <QJsonObject>
 
 class GameBoard : public QWidget
 {
@@ -20,13 +15,18 @@ public:
     explicit GameBoard(QWidget *parent = nullptr);
     ~GameBoard() override;
 
-    void setController(GameController* controller);
+    void setBoardSize(int size);
+    void updateBoard(const QJsonObject& state);
+    void clearBoard();
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void leaveEvent(QEvent* event) override;
+
+signals:
+    void lineClicked(const QPoint& p1, const QPoint& p2);
 
 private:
     void drawDots(QPainter& painter, int dotRadius);
@@ -43,12 +43,17 @@ private:
     bool isNearLine(const QPoint& point, const QPoint& p1,
                     const QPoint& p2, int threshold) const;
 
-    GameController* m_controller;
+    int m_boardSize;
+    QVector<QVector<int>> m_horizontalLines;
+    QVector<QVector<int>> m_verticalLines;
+    QVector<QVector<int>> m_boxes;
+
     QPoint m_hoverLineStart;
     QPoint m_hoverLineEnd;
     bool m_hasHover;
 
     static constexpr int HOVER_ALPHA = 80;
+    static constexpr int INVALID_PLAYER = -1;
 };
 
 #endif // GAMEBOARD_H

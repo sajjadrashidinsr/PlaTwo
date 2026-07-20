@@ -33,7 +33,7 @@ enum MessageType {
     MSG_ROOM_JOINED = 201,
     MSG_PLAYER_JOINED = 202,
     MSG_PLAYER_LEFT = 203,
-    MSG_ROOM_ERROR = 204
+    MSG_ROOM_ERROR = 204,
 
     // Client <-> Server (Game Play)
     MSG_GAME_START = 300,
@@ -44,6 +44,7 @@ enum MessageType {
     MSG_GAME_READY = 305,
     MSG_GAME_ERROR = 306
 };
+
 }
 
 #endif // NETWORK_CONSTANTS_H

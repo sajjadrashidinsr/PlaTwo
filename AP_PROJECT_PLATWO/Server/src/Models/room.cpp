@@ -1,4 +1,5 @@
 #include "room.h"
+#include "../Game/GameController.h"
 
 Room::Room(const QString& roomName,
            quint16 port,
@@ -14,3 +15,4 @@ Room::Room(const QString& roomName,
     , gameSettings(settings)
 {
 }
+

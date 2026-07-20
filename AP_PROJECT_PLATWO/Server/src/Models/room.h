@@ -2,9 +2,11 @@
 #define ROOM_H
 
 #include <QString>
-#include "GameSettings.h"
 #include <QTcpSocket>
-#include "GameController.h"
+#include <memory>
+#include "GameSettings.h"
+
+class GameController;
 
 enum class RoomStatus
 {
@@ -24,6 +26,14 @@ public:
          const GameSettings& settings,
          const QString& password = QString());
 
+    ~Room() = default;
+
+    Room(Room&& other) noexcept = default;
+    Room& operator=(Room&& other) noexcept = default;
+
+    Room(const Room&) = delete;
+    Room& operator=(const Room&) = delete;
+
     QString roomName;
     quint16 port = 1234;
     QString hostUsername;
@@ -37,7 +47,8 @@ public:
     bool hasGuest() const { return !guestUsername.isEmpty(); }
     bool isPasswordProtected() const { return !password.isEmpty(); }
 
-    std::unique_ptr<GameController> gameController;
+    std::shared_ptr<GameController> gameController;
+
     bool gameStarted = false;
     QString gameType = "DotsAndBoxes";
     int currentPlayerId = 0;

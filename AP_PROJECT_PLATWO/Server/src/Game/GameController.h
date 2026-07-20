@@ -1,13 +1,12 @@
-
 #ifndef GAMECONTROLLER_H
 #define GAMECONTROLLER_H
 
 #include <QObject>
 #include <memory>
-#include <QPoint>  
+#include <QPoint>
+#include "BoardModel.h"
+#include "Player.h"
 
-class BoardModel;
-class Player;
 
 class GameController : public QObject
 {
@@ -16,7 +15,7 @@ class GameController : public QObject
 public:
     explicit GameController(int boardSize, QObject* parent = nullptr);
     ~GameController() override;
-    
+
     void setPlayerNames(const QString& player1Name, const QString& player2Name);
     bool makeMove(const QPoint& p1, const QPoint& p2);
     const Player* getCurrentPlayer() const;
@@ -26,9 +25,8 @@ public:
     int getWinner() const;
     void resetGame();
     void newGame(int boardSize);
-    
     void switchPlayer();
-    
+
 signals:
     void gameStateChanged();
 

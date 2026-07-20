@@ -3,8 +3,7 @@
 
 #include <QWidget>
 #include <QPointer>
-#include <memory>
-#include "GameController.h"
+#include <QJsonObject>
 #include "GameBoard.h"
 
 class ClientManager;
@@ -27,7 +26,7 @@ public:
     void setPlayers(const QString& player1Name, const QString& player2Name);
 
 public slots:
-    void onGameStateReceived(const QJsonObject& state);
+    void onGameStateReceived(const QJsonObject& data);
     void onGameOverReceived(const QJsonObject& data);
     void onGameAborted();
 
@@ -36,8 +35,7 @@ signals:
     void leaveGame();
 
 private slots:
-    void onMoveMade(const QPoint& p1, const QPoint& p2);
-    void onGameStateChanged();
+    void onLineClicked(const QPoint& p1, const QPoint& p2);
     void onBackClicked();
 
 private:
@@ -45,13 +43,17 @@ private:
 
     Ui::GameWidget *ui;
     GameBoard* m_gameBoard;
-    GameController* m_gameController;
 
     QPointer<ClientManager> m_clientManager;
     quint16 m_roomPort = 0;
     bool m_isHost = false;
     int m_playerId = 0;
     bool m_gameEnded = false;
+
+    int m_player1Score = 0;
+    int m_player2Score = 0;
+    int m_currentPlayer = 0;
+    bool m_gameOver = false;
 };
 
 #endif // GAMEWIDGET_H

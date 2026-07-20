@@ -60,6 +60,9 @@ void GameDetailPage::loadData()
 }
 
 void GameDetailPage::onGetUserResponse(bool success, user* userData, const QString& message) {
+
+    Q_UNUSED(message);
+
     if (!success || !userData) {
         return;
     }

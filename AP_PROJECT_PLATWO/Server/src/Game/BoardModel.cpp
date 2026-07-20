@@ -1,16 +1,7 @@
-/**
- * @file BoardModel.cpp
- * @brief Implementation of the BoardModel class.
- */
-
 #include "BoardModel.h"
 #include <QPoint>
-#include <QDebug>
 #include <algorithm>
 
-/**
- * @brief Constructor for BoardModel.
- */
 BoardModel::BoardModel(int boardSize, QObject* parent)
     : QObject(parent)
     , m_boardSize(boardSize)
@@ -18,17 +9,10 @@ BoardModel::BoardModel(int boardSize, QObject* parent)
     reset();
 }
 
-/**
- * @brief Destructor for BoardModel.
- */
 BoardModel::~BoardModel()
 {
-    // Qt handles deletion
 }
 
-/**
- * @brief Gets the owner of a line.
- */
 int BoardModel::getLine(int row, int col, LineType type) const
 {
     if (row < 0 || row >= m_boardSize || col < 0 || col >= m_boardSize) {
@@ -38,15 +22,12 @@ int BoardModel::getLine(int row, int col, LineType type) const
     if (type == LineType::Horizontal) {
         if (col >= m_boardSize - 1) return INVALID_PLAYER;
         return m_horizontalLines[row][col];
-    } else {  // Vertical
+    } else {
         if (row >= m_boardSize - 1) return INVALID_PLAYER;
         return m_verticalLines[row][col];
     }
 }
 
-/**
- * @brief Sets a line to be drawn by a player.
- */
 bool BoardModel::setLine(int row, int col, LineType type, int playerId)
 {
     if (row < 0 || row >= m_boardSize || col < 0 || col >= m_boardSize) {
@@ -64,7 +45,7 @@ bool BoardModel::setLine(int row, int col, LineType type, int playerId)
         }
         m_horizontalLines[row][col] = playerId;
         return true;
-    } else {  // Vertical
+    } else {
         if (row >= m_boardSize - 1) return false;
         if (m_verticalLines[row][col] != INVALID_PLAYER) {
             return false;
@@ -74,9 +55,6 @@ bool BoardModel::setLine(int row, int col, LineType type, int playerId)
     }
 }
 
-/**
- * @brief Gets the owner of a box.
- */
 int BoardModel::getBox(int row, int col) const
 {
     if (row < 0 || row >= m_boardSize - 1 || col < 0 || col >= m_boardSize - 1) {
@@ -85,17 +63,11 @@ int BoardModel::getBox(int row, int col) const
     return m_boxes[row][col];
 }
 
-/**
- * @brief Checks if a line is already drawn.
- */
 bool BoardModel::isLineDrawn(int row, int col, LineType type) const
 {
     return getLine(row, col, type) != INVALID_PLAYER;
 }
 
-/**
- * @brief Checks if a move is valid.
- */
 bool BoardModel::isValidMove(const QPoint& p1, const QPoint& p2) const
 {
     int row, col;
@@ -108,9 +80,6 @@ bool BoardModel::isValidMove(const QPoint& p1, const QPoint& p2) const
     return getLine(row, col, type) == INVALID_PLAYER;
 }
 
-/**
- * @brief Makes a move on the board.
- */
 QVector<QPoint> BoardModel::makeMove(const QPoint& p1, const QPoint& p2, int playerId)
 {
     QVector<QPoint> completedBoxes;
@@ -153,9 +122,6 @@ QVector<QPoint> BoardModel::makeMove(const QPoint& p1, const QPoint& p2, int pla
     return completedBoxes;
 }
 
-/**
- * @brief Checks if the game is over.
- */
 bool BoardModel::isGameOver() const
 {
     for (int row = 0; row < m_boardSize - 1; ++row) {
@@ -168,17 +134,11 @@ bool BoardModel::isGameOver() const
     return true;
 }
 
-/**
- * @brief Gets the total number of boxes.
- */
 int BoardModel::getTotalBoxes() const
 {
     return (m_boardSize - 1) * (m_boardSize - 1);
 }
 
-/**
- * @brief Gets the number of boxes claimed by a player.
- */
 int BoardModel::getBoxesForPlayer(int playerId) const
 {
     int count = 0;
@@ -192,9 +152,6 @@ int BoardModel::getBoxesForPlayer(int playerId) const
     return count;
 }
 
-/**
- * @brief Resets the board.
- */
 void BoardModel::reset()
 {
     m_horizontalLines.resize(m_boardSize);
@@ -213,9 +170,6 @@ void BoardModel::reset()
     }
 }
 
-/**
- * @brief Checks if a box is completed.
- */
 bool BoardModel::isBoxComplete(int row, int col) const
 {
     if (row < 0 || row >= m_boardSize - 1 || col < 0 || col >= m_boardSize - 1) {
@@ -232,9 +186,6 @@ bool BoardModel::isBoxComplete(int row, int col) const
            m_verticalLines[row][col + 1] != INVALID_PLAYER;
 }
 
-/**
- * @brief Checks if the four lines of a box are drawn.
- */
 bool BoardModel::areBoxLinesDrawn(int row, int col) const
 {
     if (row < 0 || row >= m_boardSize - 1 || col < 0 || col >= m_boardSize - 1) {
@@ -247,9 +198,6 @@ bool BoardModel::areBoxLinesDrawn(int row, int col) const
            m_verticalLines[row][col + 1] != INVALID_PLAYER;
 }
 
-/**
- * @brief Converts line endpoints to grid indices.
- */
 bool BoardModel::getLineIndices(const QPoint& p1, const QPoint& p2,
                                 int& row, int& col, LineType& type) const
 {

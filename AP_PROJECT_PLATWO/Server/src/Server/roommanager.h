@@ -13,6 +13,7 @@ class RoomManager : public QObject
     Q_OBJECT
 public:
     explicit RoomManager(QObject *parent = nullptr);
+    ~RoomManager();
 
     bool createRoom(const QString& roomName, quint16 port,
                     const QString& hostUsername,
@@ -29,7 +30,8 @@ public:
     bool leaveRoom(quint16 port, const QString& username);
     bool removeRoom(quint16 port);
     Room* getRoom(quint16 port);
-    QList<Room> getAllRooms() const;
+
+    QList<Room*> getAllRooms() const;
 
     bool startGame(quint16 port, int boardSize);
     bool processGameMove(quint16 port, const QPoint& p1, const QPoint& p2,
@@ -44,7 +46,9 @@ signals:
     void roomClosed(quint16 port);
 
 private:
-    QMap<quint16, Room> rooms; // key: port (unique)
+    void cleanupRooms();
+
+    QMap<quint16, Room*> rooms;
     mutable QMutex mutex;
 };
 

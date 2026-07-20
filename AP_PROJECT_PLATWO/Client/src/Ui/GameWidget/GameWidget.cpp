@@ -7,13 +7,14 @@
 GameWidget::GameWidget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::GameWidget)
-    , m_gameController(nullptr)
+    , m_gameEnded(false)
+    , m_gameOver(false)
 {
     ui->setupUi(this);
 
     m_gameBoard = ui->gameBoard;
 
-    connect(m_gameBoard, &GameBoard::moveMade, this, &GameWidget::onMoveMade);
+    connect(m_gameBoard, &GameBoard::lineClicked, this, &GameWidget::onLineClicked);
     connect(ui->backButton, &QPushButton::clicked, this, &GameWidget::onBackClicked);
 }
 
@@ -36,33 +37,29 @@ void GameWidget::setRoomInfo(quint16 port, bool isHost)
 
 void GameWidget::startGame(int boardSize)
 {
-    if (m_gameController) {
-        m_gameController->deleteLater();
-    }
-
-    m_gameController = new GameController(boardSize, this);
-    m_gameBoard->setController(m_gameController);
     m_gameEnded = false;
+    m_gameOver = false;
+    m_player1Score = 0;
+    m_player2Score = 0;
 
-    connect(m_gameController, &GameController::gameStateChanged,
-            this, &GameWidget::onGameStateChanged);
+    m_gameBoard->setBoardSize(boardSize);
+    m_gameBoard->clearBoard();
 
     ui->statusLabel->setText("Game started!");
-    onGameStateChanged();
+    ui->turnLabel->setText("Waiting for server...");
+    ui->player1ScoreLabel->setText("0");
+    ui->player2ScoreLabel->setText("0");
 }
 
 void GameWidget::setPlayers(const QString& player1Name, const QString& player2Name)
 {
-    if (m_gameController) {
-        m_gameController->setPlayerNames(player1Name, player2Name);
-        updateUI();
-    }
+    ui->player1NameLabel->setText(player1Name + ":");
+    ui->player2NameLabel->setText(player2Name + ":");
 }
 
-void GameWidget::onMoveMade(const QPoint& p1, const QPoint& p2)
+void GameWidget::onLineClicked(const QPoint& p1, const QPoint& p2)
 {
-    if (!m_gameController || m_gameEnded) return;
-    if (m_gameController->isGameOver()) return;
+    if (m_gameEnded || m_gameOver) return;
 
     QJsonObject moveData;
     moveData["port"] = static_cast<int>(m_roomPort);
@@ -77,60 +74,28 @@ void GameWidget::onMoveMade(const QPoint& p1, const QPoint& p2)
     }
 }
 
-void GameWidget::onGameStateReceived(const QJsonObject& state)
+void GameWidget::onGameStateReceived(const QJsonObject& data)
 {
-    if (!m_gameController) return;
+    QJsonObject state = data["state"].toObject();
 
-    QJsonObject boardState = state["state"].toObject();
+    m_player1Score = state["player1Score"].toInt();
+    m_player2Score = state["player2Score"].toInt();
+    m_currentPlayer = state["currentPlayer"].toInt();
+    m_gameOver = state["gameOver"].toBool();
 
-    if (boardState.contains("player1Score") && boardState.contains("player2Score")) {
-        int p1Score = boardState["player1Score"].toInt();
-        int p2Score = boardState["player2Score"].toInt();
+    // به‌روزرسانی برد
+    m_gameBoard->updateBoard(state);
 
-        Player* p1 = const_cast<Player*>(m_gameController->getPlayer(0));
-        Player* p2 = const_cast<Player*>(m_gameController->getPlayer(1));
-
-        if (p1) {
-            p1->resetScore();
-            p1->addScore(p1Score);
-        }
-        if (p2) {
-            p2->resetScore();
-            p2->addScore(p2Score);
-        }
-    }
-
-    if (boardState.contains("gameOver") && boardState["gameOver"].toBool()) {
-        if (!m_gameEnded) {
-            m_gameEnded = true;
-            int winner = boardState.contains("winner") ? boardState["winner"].toInt() : -1;
-            if (winner != -1) {
-                ui->turnLabel->setText("Game Over!");
-                QString winnerName = (winner == 0) ?
-                    m_gameController->getPlayer(0)->getName() :
-                    m_gameController->getPlayer(1)->getName();
-                ui->statusLabel->setText(QString("%1 wins!").arg(winnerName));
-            }
-        }
-    } else if (boardState.contains("currentPlayer")) {
-        int currentPlayer = boardState["currentPlayer"].toInt();
-        if (m_gameController) {
-            // Update current player state
-        }
-    }
-
+    // به‌روزرسانی UI
     updateUI();
-    m_gameBoard->update();
 }
 
 void GameWidget::onGameOverReceived(const QJsonObject& data)
 {
-    if (m_gameEnded) return;
     m_gameEnded = true;
+    m_gameOver = true;
 
     int winner = data["winner"].toInt();
-    int p1Score = data["player1Score"].toInt();
-    int p2Score = data["player2Score"].toInt();
 
     ui->turnLabel->setText("Game Over!");
 
@@ -138,12 +103,13 @@ void GameWidget::onGameOverReceived(const QJsonObject& data)
         ui->statusLabel->setText("It's a Draw!");
     } else {
         QString winnerName = (winner == 0) ?
-            m_gameController->getPlayer(0)->getName() :
-            m_gameController->getPlayer(1)->getName();
+                                 ui->player1NameLabel->text().replace(":", "") :
+                                 ui->player2NameLabel->text().replace(":", "");
         ui->statusLabel->setText(QString("%1 wins!").arg(winnerName));
     }
 
-    updateUI();
+    ui->player1ScoreLabel->setText(QString::number(m_player1Score));
+    ui->player2ScoreLabel->setText(QString::number(m_player2Score));
 }
 
 void GameWidget::onGameAborted()
@@ -152,47 +118,28 @@ void GameWidget::onGameAborted()
     emit leaveGame();
 }
 
-void GameWidget::onGameStateChanged()
-{
-    updateUI();
-}
-
 void GameWidget::updateUI()
 {
-    if (!m_gameController) return;
+    ui->player1ScoreLabel->setText(QString::number(m_player1Score));
+    ui->player2ScoreLabel->setText(QString::number(m_player2Score));
 
-    const Player* p1 = m_gameController->getPlayer(0);
-    const Player* p2 = m_gameController->getPlayer(1);
-
-    if (p1) {
-        ui->player1NameLabel->setText(p1->getName() + ":");
-        ui->player1ScoreLabel->setText(QString::number(p1->getScore()));
+    if (!m_gameOver) {
+        QString playerName = (m_currentPlayer == 0) ?
+                                 ui->player1NameLabel->text().replace(":", "") :
+                                 ui->player2NameLabel->text().replace(":", "");
+        ui->turnLabel->setText(QString("Turn: %1").arg(playerName));
     }
-
-    if (p2) {
-        ui->player2NameLabel->setText(p2->getName() + ":");
-        ui->player2ScoreLabel->setText(QString::number(p2->getScore()));
-    }
-
-    if (!m_gameController->isGameOver()) {
-        const Player* current = m_gameController->getCurrentPlayer();
-        if (current) {
-            ui->turnLabel->setText(QString("Turn: %1").arg(current->getName()));
-        }
-    }
-
-    m_gameBoard->update();
 }
 
 void GameWidget::onBackClicked()
 {
-    if (!m_gameEnded) {
+    if (!m_gameEnded && !m_gameOver) {
         QMessageBox::StandardButton reply = QMessageBox::question(
             this,
             "Leave Game",
             "Are you sure you want to leave the game?",
             QMessageBox::Yes | QMessageBox::No
-        );
+            );
 
         if (reply != QMessageBox::Yes) {
             return;
