@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>550</width>
-    <height>350</height>
+    <height>400</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,10 +17,61 @@
    <bool>true</bool>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <widget class="QLabel" name="titleLabel">
+     <property name="font">
+      <font>
+       <pointsize>16</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="text">
+      <string>⏳ Waiting Room</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="line">
+     <property name="frameShape">
+      <enum>QFrame::HLine</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Sunken</enum>
+     </property>
+    </widget>
+   </item>
    <item>
     <layout class="QGridLayout" name="gridLayout">
+     <property name="verticalSpacing">
+      <number>10</number>
+     </property>
      <item row="0" column="0">
       <widget class="QLabel" name="label_status">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
         <string>Status:</string>
        </property>
@@ -28,13 +79,28 @@
      </item>
      <item row="0" column="1">
       <widget class="QLabel" name="statusLabel">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
         <string>Waiting for players...</string>
+       </property>
+       <property name="styleSheet">
+        <string>color: #FF9800;</string>
        </property>
       </widget>
      </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_host">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
         <string>Host:</string>
        </property>
@@ -45,10 +111,19 @@
        <property name="text">
         <string>Host name</string>
        </property>
+       <property name="styleSheet">
+        <string>color: #2196F3; font-weight: bold;</string>
+       </property>
       </widget>
      </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label_guest">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
         <string>Guest:</string>
        </property>
@@ -59,10 +134,19 @@
        <property name="text">
         <string>Not connected</string>
        </property>
+       <property name="styleSheet">
+        <string>color: #F44336; font-weight: bold;</string>
+       </property>
       </widget>
      </item>
      <item row="3" column="0">
       <widget class="QLabel" name="label_board">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
         <string>Board:</string>
        </property>
@@ -77,6 +161,12 @@
      </item>
      <item row="4" column="0">
       <widget class="QLabel" name="label_time">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
         <string>Time:</string>
        </property>
@@ -91,6 +181,12 @@
      </item>
      <item row="5" column="0">
       <widget class="QLabel" name="label_address">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
         <string>Server Address:</string>
        </property>
@@ -101,12 +197,28 @@
        <property name="text">
         <string>IP:Port</string>
        </property>
+       <property name="styleSheet">
+        <string>color: #4CAF50; font-weight: bold;</string>
+       </property>
       </widget>
      </item>
     </layout>
    </item>
    <item>
+    <widget class="QFrame" name="line_2">
+     <property name="frameShape">
+      <enum>QFrame::HLine</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Sunken</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_buttons">
+     <property name="spacing">
+      <number>10</number>
+     </property>
      <item>
       <spacer name="horizontalSpacer_buttons">
        <property name="orientation">
@@ -121,20 +233,101 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="copyButton">
+      <widget class="QPushButton" name="startGameButton">
+       <property name="minimumSize">
+        <size>
+         <width>120</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>11</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
-        <string>Copy Address</string>
+        <string>▶ Start Game</string>
+       </property>
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="visible">
+        <bool>false</bool>
+       </property>
+       <property name="styleSheet">
+        <string>QPushButton {
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 5px;
+}
+QPushButton:hover {
+    background-color: #45a049;
+}
+QPushButton:disabled {
+    background-color: #cccccc;
+    color: #666666;
+}</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="copyButton">
+       <property name="minimumSize">
+        <size>
+         <width>120</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>📋 Copy Address</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="leaveButton">
+       <property name="minimumSize">
+        <size>
+         <width>120</width>
+         <height>40</height>
+        </size>
+       </property>
        <property name="text">
-        <string>Leave Room</string>
+        <string>🚪 Leave Room</string>
        </property>
       </widget>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QFrame" name="line_3">
+     <property name="frameShape">
+      <enum>QFrame::HLine</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Sunken</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="infoLabel">
+     <property name="font">
+      <font>
+       <pointsize>9</pointsize>
+       <italic>true</italic>
+      </font>
+     </property>
+     <property name="text">
+      <string>💡 Share the server address with your opponent so they can join.</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

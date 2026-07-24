@@ -16,6 +16,7 @@ private:
     QString databasePath;
     QMutex dbMutex;
 
+    // ✅ استفاده از QThreadStorage با raw pointer به جای unique_ptr
     QThreadStorage<QSqlDatabase*> threadDb;
 
     QSqlDatabase getThreadDatabase();
@@ -26,13 +27,10 @@ public:
     ~storage_manager();
 
     bool verifyUser(const QString& username, const QString& phone);
-
     bool registeruser(const user& user);
     user* getuser(const QString& username);
-
     bool updateuser(const user& user);
     bool updateuser(const QString& oldUsername, const user& user);
-
     bool addGameRecord(const QString& username, const GameRecord& record);
     bool clearAllData();
 };

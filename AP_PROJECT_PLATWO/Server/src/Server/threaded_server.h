@@ -7,6 +7,8 @@
 #include <QMap>
 #include <QThreadPool>
 #include <QMutex>
+#include <QPointer>
+#include <memory>
 #include "storage_manager.h"
 #include "roommanager.h"
 #include "network_constants.h"
@@ -38,8 +40,8 @@ private:
     void cleanupClient(QTcpSocket* client);
 
     QTcpServer* tcpServer;
-    storage_manager* storageManager;
-    RoomManager* roomManager;
+    std::shared_ptr<storage_manager> storageManager;
+    std::shared_ptr<RoomManager> roomManager;
     QThreadPool* threadPool;
 
     QMap<QTcpSocket*, QString> clientBuffer;

@@ -26,6 +26,12 @@ public:
     void resetGame();
     void newGame(int boardSize);
     void switchPlayer();
+    void setPlayerId(int playerIndex, int id) {
+        Player* player = (playerIndex == 0) ? m_player1.get() : m_player2.get();
+        if (player) {
+            player->setPlayerId(id);
+        }
+    }
 
 signals:
     void gameStateChanged();

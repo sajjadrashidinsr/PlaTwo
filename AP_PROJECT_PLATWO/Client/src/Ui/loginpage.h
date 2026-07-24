@@ -3,8 +3,8 @@
 
 #include <QWidget>
 #include <QAction>
+#include <memory>   // ADD THIS
 
-// Forward declaration
 class ClientManager;
 class user;
 
@@ -22,11 +22,11 @@ public:
 signals:
     void createAccountClicked();
     void forgotPasswordClicked();
-    void loginSuccessful(user* user);
+    void loginSuccessful(std::shared_ptr<user> userData);   // ← CHANGED TO shared_ptr
 
 private slots:
     void updateLoginButton();
-    void onLoginResponse(bool success, user* userData, const QString& message);
+    void onLoginResponse(bool success, std::shared_ptr<user> userData, const QString& message);   // ← CHANGED
 
 private:
     Ui::loginPage *ui;

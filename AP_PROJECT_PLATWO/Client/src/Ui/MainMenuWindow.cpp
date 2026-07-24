@@ -1,12 +1,12 @@
 #include "mainmenuwindow.h"
 #include "ui_mainmenuwindow.h"
 #include "client_manager.h"
+#include "Dialogs/hostgamedialog.h"
+#include "Dialogs/joingamedialog.h"
+#include "Dialogs/waitingroomdialog.h"
+#include "GameWidget/GameWidget.h"
 #include <QMessageBox>
-#include <QAction>
-#include <QIcon>
 #include <QDebug>
-#include <QFile>
-#include <QException>
 
 MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidget *parent)
     : QWidget(parent)
@@ -15,55 +15,42 @@ MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidge
     , clientManager(client)
     , mainMenuWidget(nullptr)
     , gameDetailPage(nullptr)
-    , editProfilePage(nullptr) {
+    , editProfilePage(nullptr)
+    , m_gameWidget(nullptr)
+    , m_isHost(false)
+{
+    qDebug() << "[MainMenuWindow] ===== CONSTRUCTOR STARTED =====";
 
-    qDebug() << "[MainMenuWindow] Constructor started";
-    qDebug() << "[MainMenuWindow] loggedInUser:" << (loggedInUser ? loggedInUser->username : "null");
-    qDebug() << "[MainMenuWindow] clientManager:" << (client ? "valid" : "null");
-
-    qDebug() << "[MainMenuWindow] Setting up UI...";
-    ui->setupUi(this);
-    qDebug() << "[MainMenuWindow] UI setup complete";
-
-    this->setAttribute(Qt::WA_DeleteOnClose, true);
-    this->setAttribute(Qt::WA_StyledBackground, true);
-    qDebug() << "[MainMenuWindow] Attributes set";
-
-    qDebug() << "[MainMenuWindow] Creating MainMenu widget...";
-    mainMenuWidget = new MainMenu(this);
-    if (!mainMenuWidget) {
-        qDebug() << "[MainMenuWindow] ERROR: mainMenuWidget is null!";
-        QMessageBox::critical(this, "Error", "Failed to create MainMenu widget.");
+    if (!clientManager) {
+        qDebug() << "[MainMenuWindow] ERROR: clientManager is null!";
         return;
     }
+
+    ui->setupUi(this);
+    qDebug() << "[MainMenuWindow] ui->setupUi done";
+
+    this->setAttribute(Qt::WA_DeleteOnClose, true);
+    qDebug() << "[MainMenuWindow] setAttribute done";
+
+    qDebug() << "[MainMenuWindow] Creating MainMenu...";
+    mainMenuWidget = new MainMenu(this);
     qDebug() << "[MainMenuWindow] MainMenu created";
 
     qDebug() << "[MainMenuWindow] Creating GameDetailPage...";
     gameDetailPage = new GameDetailPage(currentUser, clientManager, this);
-    if (!gameDetailPage) {
-        qDebug() << "[MainMenuWindow] ERROR: gameDetailPage is null!";
-        QMessageBox::critical(this, "Error", "Failed to create GameDetailPage.");
-        return;
-    }
     qDebug() << "[MainMenuWindow] GameDetailPage created";
 
     qDebug() << "[MainMenuWindow] Creating EditProfilePage...";
     editProfilePage = new EditProfilePage(currentUser, clientManager, this);
-    if (!editProfilePage) {
-        qDebug() << "[MainMenuWindow] ERROR: editProfilePage is null!";
-        QMessageBox::critical(this, "Error", "Failed to create EditProfilePage.");
-        return;
-    }
     qDebug() << "[MainMenuWindow] EditProfilePage created";
 
-    qDebug() << "[MainMenuWindow] Adding widgets to stacked widget...";
+    qDebug() << "[MainMenuWindow] Adding widgets to stackedWidget...";
     ui->stackedWidget->addWidget(mainMenuWidget);
     ui->stackedWidget->addWidget(gameDetailPage);
     ui->stackedWidget->addWidget(editProfilePage);
     ui->stackedWidget->setCurrentIndex(0);
-    qDebug() << "[MainMenuWindow] Widgets added to stacked widget";
+    qDebug() << "[MainMenuWindow] Widgets added";
 
-    qDebug() << "[MainMenuWindow] Connecting signals...";
     connect(mainMenuWidget, &MainMenu::gameSelected, this, &MainMenuWindow::onGameSelected);
     connect(mainMenuWidget, &MainMenu::editProfileRequested, this, &MainMenuWindow::onEditProfileRequested);
     connect(mainMenuWidget, &MainMenu::exitRequested, this, &MainMenuWindow::exitRequested);
@@ -80,16 +67,23 @@ MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidge
     });
 
     connect(clientManager, &ClientManager::getUserResponse, this,
-            [this](bool success, user* userData, const QString& /*message*/) {
+            [this](bool success, std::shared_ptr<user> userData, const QString&) {
                 qDebug() << "[MainMenuWindow] getUserResponse received, success:" << success;
+
                 if (success && userData && currentUser) {
+                    qDebug() << "[MainMenuWindow] Updating user data, history size:" << userData->history.size();
                     *currentUser = *userData;
-                    delete userData;
-                    mainMenuWidget->setUserInfo(currentUser);
-                    gameDetailPage->setUser(currentUser);
+                    // ⚠️ DO NOT delete userData - shared_ptr auto-deletes
+                    if (mainMenuWidget) mainMenuWidget->setUserInfo(currentUser);
+                    if (gameDetailPage) {
+                        gameDetailPage->loadHistory();
+                    }
+                } else {
+                    qDebug() << "[MainMenuWindow] getUserResponse failed or invalid data";
+                    // shared_ptr will auto-delete, no manual delete needed
                 }
             });
-    
+
     connect(clientManager, &ClientManager::gameStarted,
             this, &MainMenuWindow::onGameStarted);
     connect(clientManager, &ClientManager::gameStateReceived,
@@ -97,25 +91,13 @@ MainMenuWindow::MainMenuWindow(user* loggedInUser, ClientManager* client, QWidge
     connect(clientManager, &ClientManager::gameOverReceived,
             this, &MainMenuWindow::onGameOverReceived);
     connect(clientManager, &ClientManager::gameAborted,
-            this, &MainMenuWindow::onGameAborted);        
-    
-            
-    qDebug() << "[MainMenuWindow] Signals connected";
+            this, &MainMenuWindow::onGameAborted);
 
-    qDebug() << "[MainMenuWindow] Setting window icon...";
-    QIcon icon(":/icons/logo.png");
-    if (!icon.isNull()) {
-        setWindowIcon(icon);
-        qDebug() << "[MainMenuWindow] Window icon set";
-    } else {
-        qDebug() << "[MainMenuWindow] WARNING: Logo icon not found!";
-    }
+    setWindowIcon(QIcon(":/icons/logo.png"));
 
-    qDebug() << "[MainMenuWindow] Setting user info...";
-    setUserInfo(currentUser);
-    qDebug() << "[MainMenuWindow] User info set";
+    if (mainMenuWidget) mainMenuWidget->setUserInfo(currentUser);
 
-    qDebug() << "[MainMenuWindow] Constructor finished successfully";
+    qDebug() << "[MainMenuWindow] ===== CONSTRUCTOR FINISHED SUCCESSFULLY =====";
 }
 
 MainMenuWindow::~MainMenuWindow() {
@@ -123,32 +105,20 @@ MainMenuWindow::~MainMenuWindow() {
     delete ui;
 }
 
+
 void MainMenuWindow::setUserInfo(user* loggedInUser) {
     currentUser = loggedInUser;
-    if (mainMenuWidget) {
-        mainMenuWidget->setUserInfo(currentUser);
-    }
-    if (gameDetailPage) {
-        gameDetailPage->setUser(currentUser);
-    }
-    if (editProfilePage) {
-        editProfilePage->setUser(currentUser);
-    }
+    if (mainMenuWidget) mainMenuWidget->setUserInfo(currentUser);
 }
 
 void MainMenuWindow::showEvent(QShowEvent* event) {
-    qDebug() << "[MainMenuWindow] showEvent called";
     QWidget::showEvent(event);
-    qDebug() << "[MainMenuWindow] showEvent finished";
 }
 
 void MainMenuWindow::paintEvent(QPaintEvent* event) {
-    qDebug() << "[MainMenuWindow] paintEvent called";
     QWidget::paintEvent(event);
-    qDebug() << "[MainMenuWindow] paintEvent finished";
 }
 
-// بقیه توابع بدون تغییر
 void MainMenuWindow::onGameSelected(int gameId) {
     qDebug() << "[MainMenuWindow] onGameSelected:" << gameId;
     GameType type;
@@ -160,8 +130,8 @@ void MainMenuWindow::onGameSelected(int gameId) {
     }
     if (gameDetailPage) {
         gameDetailPage->setGameType(type);
-        gameDetailPage->loadData();
         ui->stackedWidget->setCurrentIndex(1);
+        gameDetailPage->loadData();
     }
 }
 
@@ -172,14 +142,72 @@ void MainMenuWindow::onBackToMenu() {
 
 void MainMenuWindow::onStartNewGame(GameType gameType, bool isHost)
 {
-    if (gameType == GameType::DotsAndBoxes) {
-        m_isHost = isHost;
-        m_currentRoom.port = 1234;
-        m_currentRoom.gameSettings.boardSize = 5;
-        m_currentRoom.hostUsername = currentUser ? currentUser->username : "Host";
-        m_currentRoom.guestUsername = "Guest";
+    qDebug() << "[MainMenuWindow] onStartNewGame called, gameType:" << static_cast<int>(gameType) << "isHost:" << isHost;
 
-        showGameWidget();
+    if (gameType != GameType::DotsAndBoxes) {
+        return;
+    }
+
+    m_isHost = isHost;
+
+    if (isHost) {
+        HostGameDialog hostDlg(this);
+        hostDlg.setClientManager(clientManager);
+
+        connect(&hostDlg, &HostGameDialog::roomCreationSuccess,
+                this, [this](const Room& room) {
+                    m_currentRoom = room;
+                    qDebug() << "[MainMenuWindow] Room created with boardSize:"
+                             << m_currentRoom.gameSettings.boardSize;
+
+                    m_waitingDialog = new WaitingRoomDialog(true, m_currentRoom, this);
+                    m_waitingDialog->setAttribute(Qt::WA_DeleteOnClose);
+                    m_waitingDialog->setClientManager(clientManager);
+
+                    connect(m_waitingDialog, &WaitingRoomDialog::startGame, this, [this](int boardSize) {
+                        qDebug() << "[MainMenuWindow] Start game with boardSize:" << boardSize;
+                        showGameWidget(boardSize);
+                    });
+
+                    connect(m_waitingDialog, &WaitingRoomDialog::leaveRoom, this, &MainMenuWindow::onBackToMenu);
+                    m_waitingDialog->show();
+                });
+
+        connect(&hostDlg, &HostGameDialog::roomCreationFailed,
+                this, [](const QString& error) {
+                    qDebug() << "Room creation failed:" << error;
+                });
+
+        hostDlg.exec();
+    } else {
+        JoinGameDialog joinDlg(this);
+        joinDlg.setClientManager(clientManager);
+
+        connect(&joinDlg, &JoinGameDialog::joinSuccess,
+                this, [this](const Room& room) {
+                    m_currentRoom = room;
+                    qDebug() << "[MainMenuWindow] Joined room with boardSize:"
+                             << m_currentRoom.gameSettings.boardSize;
+
+                    m_waitingDialog = new WaitingRoomDialog(false, m_currentRoom, this);
+                    m_waitingDialog->setAttribute(Qt::WA_DeleteOnClose);
+                    m_waitingDialog->setClientManager(clientManager);
+
+                    connect(m_waitingDialog, &WaitingRoomDialog::startGame, this, [this](int boardSize) {
+                        qDebug() << "[MainMenuWindow] Start game with boardSize:" << boardSize;
+                        showGameWidget(boardSize);
+                    });
+
+                    connect(m_waitingDialog, &WaitingRoomDialog::leaveRoom, this, &MainMenuWindow::onBackToMenu);
+                    m_waitingDialog->show();
+                });
+
+        connect(&joinDlg, &JoinGameDialog::joinFailed,
+                this, [](const QString& error) {
+                    qDebug() << "Join failed:" << error;
+                });
+
+        joinDlg.exec();
     }
 }
 
@@ -191,53 +219,58 @@ void MainMenuWindow::onEditProfileRequested() {
     }
 }
 
-void MainMenuWindow::showGameWidget()
+void MainMenuWindow::onGameStarted(const QJsonObject& data)
 {
+    qDebug() << "[MainMenuWindow] onGameStarted called!";
+    int boardSize = data["boardSize"].toInt(5);
+    quint16 port = static_cast<quint16>(data["port"].toInt(1234));
+    qDebug() << "[MainMenuWindow] Board size from server:" << boardSize;
+    qDebug() << "[MainMenuWindow] Port from server:" << port;
+
+    bool isHost = data["isHost"].toBool(false);
+    if (!data.contains("isHost")) {
+        QString hostName = data["hostUsername"].toString();
+        isHost = (currentUser && hostName == currentUser->username);
+    }
+    m_isHost = isHost;
+    qDebug() << "[MainMenuWindow] isHost:" << m_isHost;
+
+    if (m_currentRoom.port != port) {
+        qDebug() << "[MainMenuWindow] Updating room port from" << m_currentRoom.port << "to" << port;
+        m_currentRoom.port = port;
+    }
+
     if (!m_gameWidget) {
         m_gameWidget = new GameWidget(this);
         m_gameWidget->setClientManager(clientManager);
-
-        connect(m_gameWidget, &GameWidget::leaveGame,
-                this, &MainMenuWindow::onLeaveGame);
-        connect(m_gameWidget, &GameWidget::moveMade,
-                this, [this](const QPoint& p1, const QPoint& p2) {
-                    QJsonObject moveData;
-                    moveData["port"] = static_cast<int>(m_currentRoom.port);
-                    moveData["x1"] = p1.x();
-                    moveData["y1"] = p1.y();
-                    moveData["x2"] = p2.x();
-                    moveData["y2"] = p2.y();
-                    moveData["playerId"] = m_isHost ? 0 : 1;
-                    clientManager->sendGameMove(moveData);
-                });
-
+        connect(m_gameWidget, &GameWidget::leaveGame, this, &MainMenuWindow::onLeaveGame);
         ui->stackedWidget->addWidget(m_gameWidget);
     }
 
     m_gameWidget->setRoomInfo(m_currentRoom.port, m_isHost);
+    m_gameWidget->startGame(boardSize);
 
-    if (m_isHost) {
-        int boardSize = m_currentRoom.gameSettings.boardSize;
-        clientManager->sendGameStart(m_currentRoom.port, boardSize);
-        m_gameWidget->startGame(boardSize);
+    QString hostName = data["hostUsername"].toString();
+    QString guestName = data["guestUsername"].toString();
+    if (!hostName.isEmpty() && !guestName.isEmpty()) {
+        m_gameWidget->setPlayers(hostName, guestName);
     }
 
     ui->stackedWidget->setCurrentWidget(m_gameWidget);
 }
 
-void MainMenuWindow::onGameStarted(const QJsonObject& data)
+void MainMenuWindow::showGameWidget(int boardSize)
 {
-    int boardSize = data["boardSize"].toInt();
-
-    if (!m_isHost && m_gameWidget) {
-        m_gameWidget->startGame(boardSize);
+    qDebug() << "[MainMenuWindow] showGameWidget with boardSize:" << boardSize;
+    if (!m_gameWidget) {
+        m_gameWidget = new GameWidget(this);
+        m_gameWidget->setClientManager(clientManager);
+        connect(m_gameWidget, &GameWidget::leaveGame, this, &MainMenuWindow::onLeaveGame);
+        ui->stackedWidget->addWidget(m_gameWidget);
     }
-
-    if (m_gameWidget) {
-        QString hostName = data["hostUsername"].toString();
-        QString guestName = data["guestUsername"].toString();
-        m_gameWidget->setPlayers(hostName, guestName);
-    }
+    m_gameWidget->setRoomInfo(m_currentRoom.port, m_isHost);
+    m_gameWidget->startGame(boardSize);
+    ui->stackedWidget->setCurrentWidget(m_gameWidget);
 }
 
 void MainMenuWindow::onGameStateReceived(const QJsonObject& state)

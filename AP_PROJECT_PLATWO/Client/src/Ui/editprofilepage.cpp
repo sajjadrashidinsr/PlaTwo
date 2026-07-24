@@ -4,23 +4,28 @@
 #include <QMessageBox>
 #include <QRegularExpression>
 
-EditProfilePage::EditProfilePage(user* currentUser, ClientManager* client, QWidget *parent)
+EditProfilePage::EditProfilePage(user* currentUser, QPointer<ClientManager> client, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::EditProfilePage)
     , currentUser(currentUser)
     , clientManager(client)
 {
+    qDebug() << "[EditProfilePage] Constructor started";
+
     ui->setupUi(this);
+    qDebug() << "[EditProfilePage] ui->setupUi done";
 
     ui->usernameEdit->setReadOnly(false);
 
     connect(ui->saveButton, &QPushButton::clicked, this, &EditProfilePage::onSaveClicked);
-
     connect(ui->cancelButton, &QPushButton::clicked, this, &EditProfilePage::onCancelClicked);
 
-    connect(clientManager, &ClientManager::updateUserResponse,
-            this, &EditProfilePage::onUpdateUserResponse);
+    if (clientManager) {
+        connect(clientManager, &ClientManager::updateUserResponse,
+                this, &EditProfilePage::onUpdateUserResponse);
+    }
 
+    qDebug() << "[EditProfilePage] Constructor finished";
 }
 
 EditProfilePage::~EditProfilePage()
@@ -50,7 +55,6 @@ void EditProfilePage::loadUserData()
 
 bool EditProfilePage::validateInputs()
 {
-
     if (ui->nameEdit->text().trimmed().isEmpty() || ui->usernameEdit->text().trimmed().isEmpty() ||
         ui->phoneEdit->text().trimmed().isEmpty() || ui->emailEdit->text().trimmed().isEmpty()) {
         QMessageBox::warning(this, "Validation Error", "All fields are required.");
@@ -63,7 +67,6 @@ bool EditProfilePage::validateInputs()
         QMessageBox::warning(this, "Validation Error", "Please enter a valid phone number (e.g. 09xxxxxxxxx).");
         return false;
     }
-
 
     QString email = ui->emailEdit->text().trimmed();
     QRegularExpression emailRegex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
@@ -93,7 +96,7 @@ void EditProfilePage::onSaveClicked()
 {
     if (!validateInputs()) return;
 
-    if (!clientManager->isConnected()) {
+    if (!clientManager || !clientManager->isConnected()) {
         QMessageBox::warning(this, "Connection Error", "Not connected to server.");
         return;
     }
@@ -108,10 +111,8 @@ void EditProfilePage::onSaveClicked()
 
     QString password = ui->passwordEdit->text();
     if (password.isEmpty()) {
-
         updatedUser.passwordHash = "";
     } else {
-
         updatedUser.passwordHash = password;
     }
 
@@ -119,7 +120,6 @@ void EditProfilePage::onSaveClicked()
     ui->saveButton->setText("Saving...");
 
     clientManager->sendUpdateUser(oldUsername, updatedUser);
-
 }
 
 void EditProfilePage::onUpdateUserResponse(bool success, const QString& message) {
@@ -127,8 +127,9 @@ void EditProfilePage::onUpdateUserResponse(bool success, const QString& message)
     ui->saveButton->setText("Save");
 
     if (success) {
-
-        clientManager->sendGetUser(ui->usernameEdit->text());
+        if (clientManager) {
+            clientManager->sendGetUser(ui->usernameEdit->text());
+        }
 
         QMessageBox::information(this, "Success", "Profile updated successfully.");
         emit profileUpdated();

@@ -163,7 +163,7 @@ void ClientManager::sendUpdateUser(const QString& oldUsername, const user& updat
     awaitingResponse = true;
 }
 
-// ---------- Room Management (Phase 2) ----------
+// ---------- Room Management ----------
 void ClientManager::createRoom(const QString& roomName, quint16 port,
                                const GameSettings& settings, const QString& password) {
     if (!isConnected()) {
@@ -171,7 +171,6 @@ void ClientManager::createRoom(const QString& roomName, quint16 port,
         return;
     }
 
-    // Store pending info for response handling
     pendingRoomName = roomName;
     pendingPort = port;
     pendingSettings = settings;
@@ -227,6 +226,56 @@ void ClientManager::leaveRoom(quint16 port) {
     qDebug() << "[Client] Leave room request sent for port:" << port;
 }
 
+void ClientManager::sendGameStart(quint16 port, int boardSize)
+{
+    if (!isConnected()) {
+        emit gameError("Not connected to server");
+        return;
+    }
+
+    QJsonObject data;
+    data["port"] = static_cast<int>(port);
+    data["boardSize"] = boardSize;
+
+    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_START, data);
+    socket->write(message.toUtf8());
+    qDebug() << "[Client] Sent game start for port:" << port << "boardSize:" << boardSize;
+}
+
+void ClientManager::sendGameMove(const QJsonObject& moveData)
+{
+    if (!isConnected()) {
+        emit gameError("Not connected to server");
+        return;
+    }
+
+    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_MOVE, moveData);
+    socket->write(message.toUtf8());
+}
+
+void ClientManager::sendGameAbort(quint16 port)
+{
+    if (!isConnected()) return;
+
+    QJsonObject data;
+    data["port"] = static_cast<int>(port);
+
+    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_ABORTED, data);
+    socket->write(message.toUtf8());
+}
+
+void ClientManager::sendGameReady(quint16 port, bool ready)
+{
+    if (!isConnected()) return;
+
+    QJsonObject data;
+    data["port"] = static_cast<int>(port);
+    data["ready"] = ready;
+
+    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_READY, data);
+    socket->write(message.toUtf8());
+}
+
 // ---------- Slots ----------
 void ClientManager::onConnected() {
     connectionTimer->stop();
@@ -278,7 +327,6 @@ void ClientManager::processMessage(const QString& message) {
     awaitingResponse = false;
 
     switch (type) {
-    // Authentication responses (unchanged)
     case NetworkConstants::MSG_REGISTER:
     case NetworkConstants::MSG_REGISTER_SUCCESS: {
         bool success = data["success"].toBool(false);
@@ -290,7 +338,9 @@ void ClientManager::processMessage(const QString& message) {
         bool success = data["success"].toBool(false);
         QString msg = data["message"].toString();
         if (success && data.contains("user")) {
-            user* u = new user(NetworkProtocol::userFromJson(data["user"].toObject()));
+            auto u = std::make_shared<user>(
+                NetworkProtocol::userFromJson(data["user"].toObject())
+                );
             emit loginResponse(success, u, msg);
         } else {
             emit loginResponse(success, nullptr, msg);
@@ -314,7 +364,9 @@ void ClientManager::processMessage(const QString& message) {
         bool success = data["success"].toBool(false);
         QString msg = data["message"].toString();
         if (success && data.contains("user")) {
-            user* u = new user(NetworkProtocol::userFromJson(data["user"].toObject()));
+            auto u = std::make_shared<user>(
+                NetworkProtocol::userFromJson(data["user"].toObject())
+                );
             emit getUserResponse(success, u, msg);
         } else {
             emit getUserResponse(success, nullptr, msg);
@@ -327,8 +379,6 @@ void ClientManager::processMessage(const QString& message) {
         emit updateUserResponse(success, msg);
         break;
     }
-
-    // ---------- Room responses (Phase 2) ----------
     case NetworkConstants::MSG_ROOM_CREATED: {
         bool success = data["success"].toBool(false);
         QString msg = data["message"].toString();
@@ -336,10 +386,8 @@ void ClientManager::processMessage(const QString& message) {
         if (success && data.contains("room")) {
             room = NetworkProtocol::roomFromJson(data["room"].toObject());
         } else {
-            // Fallback: use pending info to build a room object
             room.roomName = pendingRoomName;
             room.port = pendingPort;
-            room.hostUsername = ""; // Will be set by server
             room.gameSettings = pendingSettings;
             room.password = pendingPassword;
             room.status = RoomStatus::Waiting;
@@ -372,72 +420,33 @@ void ClientManager::processMessage(const QString& message) {
         emit roomError(msg);
         break;
     }
-    case NetworkConstants::MSG_GAME_START:
+    case NetworkConstants::MSG_GAME_START: {
+        qDebug() << "[Client] Received MSG_GAME_START";
         emit gameStarted(data);
         break;
-    case NetworkConstants::MSG_GAME_STATE:
+    }
+    case NetworkConstants::MSG_GAME_STATE: {
+        qDebug() << "[Client] Received MSG_GAME_STATE";
         emit gameStateReceived(data);
         break;
-    case NetworkConstants::MSG_GAME_OVER:
+    }
+    case NetworkConstants::MSG_GAME_OVER: {
+        qDebug() << "[Client] Received MSG_GAME_OVER";
         emit gameOverReceived(data);
         break;
-    case NetworkConstants::MSG_GAME_ABORTED:
+    }
+    case NetworkConstants::MSG_GAME_ABORTED: {
+        qDebug() << "[Client] Received MSG_GAME_ABORTED";
         emit gameAborted(data["message"].toString());
         break;
-    case NetworkConstants::MSG_GAME_ERROR:
+    }
+    case NetworkConstants::MSG_GAME_ERROR: {
+        qDebug() << "[Client] Received MSG_GAME_ERROR";
         emit gameError(data["message"].toString());
         break;
+    }
     default:
         emit error("Unknown response type from server");
         break;
     }
-}
-
-void ClientManager::sendGameStart(quint16 port, int boardSize)
-{
-    if (!isConnected()) {
-        emit gameError("Not connected to server");
-        return;
-    }
-    
-    QJsonObject data;
-    data["port"] = static_cast<int>(port);
-    data["boardSize"] = boardSize;
-    
-    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_START, data);
-    socket->write(message.toUtf8());
-}
-
-void ClientManager::sendGameMove(const QJsonObject& moveData)
-{
-    if (!isConnected()) {
-        emit gameError("Not connected to server");
-        return;
-    }
-    
-    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_MOVE, moveData);
-    socket->write(message.toUtf8());
-}
-
-void ClientManager::sendGameAbort(quint16 port)
-{
-    if (!isConnected()) return;
-    
-    QJsonObject data;
-    data["port"] = static_cast<int>(port);
-    
-    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_ABORTED, data);
-    socket->write(message.toUtf8());
-}
-
-void ClientManager::sendGameReady(quint16 port, bool ready)
-{
-    if (!isConnected()) return;
-    
-    QJsonObject data;
-    data["port"] = static_cast<int>(port);
-    data["ready"] = ready;
-    
-    QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_READY, data);
-    socket->write(message.toUtf8());
 }

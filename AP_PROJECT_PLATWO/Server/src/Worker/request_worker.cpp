@@ -8,8 +8,8 @@
 
 RequestWorker::RequestWorker(QTcpSocket* clientSocket,
                              const QString& message,
-                             storage_manager* storage,
-                             RoomManager* roomManager,
+                             std::shared_ptr<storage_manager> storage,
+                             std::shared_ptr<RoomManager> roomManager,
                              QObject* parent)
     : QRunnable()
     , socket(clientSocket)
@@ -19,19 +19,27 @@ RequestWorker::RequestWorker(QTcpSocket* clientSocket,
     , parentObject(parent) {
 
     setAutoDelete(true);
-    qDebug() << "[Worker] Created, thread ID:" << QThread::currentThreadId();
 }
+
 
 RequestWorker::~RequestWorker() {
     qDebug() << "[Worker] Destroyed";
 }
 
 void RequestWorker::run() {
-    qDebug() << "[Worker] Running on thread ID:" << QThread::currentThreadId();
-    qDebug() << "[Worker] Processing message:" << messageBuffer;
+    if (!socket) {
+        qDebug() << "[Worker] Socket already destroyed";
+        return;
+    }
+
+    if (socket->state() != QAbstractSocket::ConnectedState) {
+        qDebug() << "[Worker] Socket not connected";
+        return;
+    }
 
     processMessage(messageBuffer);
 }
+
 
 void RequestWorker::processMessage(const QString& message) {
     int type;
@@ -93,21 +101,24 @@ void RequestWorker::processMessage(const QString& message) {
 
 void RequestWorker::sendResponse(int type, bool success,
                                  const QString& message, const QJsonObject& data) {
+    if (!socket) {
+        qDebug() << "[Worker] Socket is null, cannot send response";
+        return;
+    }
+
+    if (socket->state() != QAbstractSocket::ConnectedState) {
+        qDebug() << "[Worker] Socket not connected, cannot send response";
+        return;
+    }
+
     QJsonObject responseData = data;
     responseData["success"] = success;
     responseData["message"] = message;
 
     QString response = NetworkProtocol::buildMessage(type, responseData);
 
-    qDebug() << "[Worker] Sending response - Success:" << success << "Message:" << message;
-
-    if (socket && socket->state() == QAbstractSocket::ConnectedState) {
-        socket->write(response.toUtf8());
-        socket->flush();
-        qDebug() << "[Worker] Response sent";
-    } else {
-        qDebug() << "[Worker] Socket not connected!";
-    }
+    socket->write(response.toUtf8());
+    socket->flush();
 }
 
 void RequestWorker::handleRegister(const QJsonObject& data) {
@@ -440,16 +451,26 @@ void RequestWorker::handleGameStart(const QJsonObject& data)
         responseData["hostUsername"] = room->hostUsername;
         responseData["guestUsername"] = room->guestUsername;
         responseData["status"] = "started";
+        responseData["port"] = static_cast<int>(port);
 
-        QString message = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_START, responseData);
+        QJsonObject hostData = responseData;
+        hostData["isHost"] = true;
+        QString hostMessage = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_START, hostData);
 
         if (room->hostSocket) {
-            room->hostSocket->write(message.toUtf8());
+            room->hostSocket->write(hostMessage.toUtf8());
             room->hostSocket->flush();
+            qDebug() << "[Worker] Sent MSG_GAME_START to host (isHost=true)";
         }
+
+        QJsonObject guestData = responseData;
+        guestData["isHost"] = false;
+        QString guestMessage = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_START, guestData);
+
         if (room->guestSocket) {
-            room->guestSocket->write(message.toUtf8());
+            room->guestSocket->write(guestMessage.toUtf8());
             room->guestSocket->flush();
+            qDebug() << "[Worker] Sent MSG_GAME_START to guest (isHost=false)";
         }
 
         QJsonObject stateData;
@@ -460,13 +481,14 @@ void RequestWorker::handleGameStart(const QJsonObject& data)
         if (room->hostSocket) {
             room->hostSocket->write(stateMsg.toUtf8());
             room->hostSocket->flush();
+            qDebug() << "[Worker] Sent MSG_GAME_STATE to host";
         }
         if (room->guestSocket) {
             room->guestSocket->write(stateMsg.toUtf8());
             room->guestSocket->flush();
+            qDebug() << "[Worker] Sent MSG_GAME_STATE to guest";
         }
 
-        sendResponse(NetworkConstants::MSG_GAME_START, true, "Game started");
     } else {
         sendResponse(NetworkConstants::MSG_GAME_ERROR, false, "Failed to start game");
     }
@@ -521,6 +543,7 @@ void RequestWorker::handleGameMove(const QJsonObject& data)
         return;
     }
 
+    // ارسال وضعیت جدید به هر دو کلاینت
     QJsonObject stateData;
     stateData["port"] = static_cast<int>(port);
     stateData["state"] = roomManager->getGameState(port);
@@ -536,6 +559,7 @@ void RequestWorker::handleGameMove(const QJsonObject& data)
         room->guestSocket->flush();
     }
 
+    // بررسی پایان بازی
     if (room->gameController && room->gameController->isGameOver()) {
         int winner, p1Score, p2Score;
         roomManager->endGame(port, winner, p1Score, p2Score);
@@ -557,16 +581,19 @@ void RequestWorker::handleGameMove(const QJsonObject& data)
             room->guestSocket->flush();
         }
 
+        // ذخیره تاریخچه در دیتابیس
         user* host = storageManager->getuser(room->hostUsername);
         user* guest = storageManager->getuser(room->guestUsername);
 
         if (host && guest) {
+            // به‌روزرسانی امتیازها
             if (winner == 0) {
                 host->dotsAndBoxesScore += 10;
             } else if (winner == 1) {
                 guest->dotsAndBoxesScore += 10;
             }
 
+            // تاریخچه Host
             GameRecord hostRecord;
             hostRecord.opponentUsername = guest->username;
             hostRecord.date = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm");
@@ -574,6 +601,7 @@ void RequestWorker::handleGameMove(const QJsonObject& data)
             hostRecord.winner = (winner == 0) ? host->username : (winner == 1) ? guest->username : "Draw";
             hostRecord.finalScore = (winner == 0) ? p1Score : p2Score;
 
+            // تاریخچه Guest
             GameRecord guestRecord;
             guestRecord.opponentUsername = host->username;
             guestRecord.date = hostRecord.date;
@@ -581,6 +609,7 @@ void RequestWorker::handleGameMove(const QJsonObject& data)
             guestRecord.winner = hostRecord.winner;
             guestRecord.finalScore = (winner == 1) ? p2Score : p1Score;
 
+            // ذخیره در دیتابیس
             storageManager->updateuser(*host);
             storageManager->updateuser(*guest);
             storageManager->addGameRecord(host->username, hostRecord);

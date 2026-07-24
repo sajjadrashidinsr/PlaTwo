@@ -14,13 +14,10 @@ loginPage::loginPage(ClientManager* client, QWidget *parent)
     ui->setupUi(this);
 
     ui->lineEdit_username->addAction(QIcon(":/icons/user.png"), QLineEdit::LeadingPosition);
-
     ui->lineEdit_username->setMaxLength(24);
-
     ui->lineEdit_username->setFocus();
 
     ui->lineEdit_password->addAction(QIcon(":/icons/lock.png"), QLineEdit::LeadingPosition);
-
     ui->lineEdit_password->setMaxLength(32);
 
     togglePasswordAction = ui->lineEdit_password->addAction(
@@ -28,7 +25,6 @@ loginPage::loginPage(ClientManager* client, QWidget *parent)
 
     connect(ui->lineEdit_username, &QLineEdit::textChanged,
             this, &loginPage::updateLoginButton);
-
     connect(ui->lineEdit_password, &QLineEdit::textChanged,
             this, &loginPage::updateLoginButton);
 
@@ -41,14 +37,11 @@ loginPage::loginPage(ClientManager* client, QWidget *parent)
     });
 
     connect(ui->pushButton_create_sign, &QPushButton::clicked, this, &loginPage::createAccountClicked);
-
     connect(ui->pushButton_forgot, &QPushButton::clicked, this, &loginPage::forgotPasswordClicked);
-
     connect(ui->pushButton_login, &QPushButton::clicked, this, &loginPage::on_btnLogin_clicked);
 
     connect(clientManager, &ClientManager::loginResponse,
             this, &loginPage::onLoginResponse);
-
 }
 
 void loginPage::updateLoginButton() {
@@ -78,17 +71,15 @@ void loginPage::on_btnLogin_clicked() {
     clientManager->sendLogin(username, password);
 }
 
-void loginPage::onLoginResponse(bool success, user* userData, const QString& message) {
+void loginPage::onLoginResponse(bool success, std::shared_ptr<user> userData, const QString& message) {
     ui->pushButton_login->setEnabled(true);
     ui->pushButton_login->setText("LOGIN");
 
     if (success && userData) {
-        emit loginSuccessful(userData);
+        emit loginSuccessful(userData);   // Emit shared_ptr
     } else {
         QMessageBox::critical(this, "Login Failed", message);
-        if (userData) {
-            delete userData;
-        }
+        // shared_ptr will auto-delete
     }
 }
 

@@ -2,12 +2,15 @@
 #define MAINMENUWINDOW_H
 
 #include <QWidget>
+#include <QPointer>
+#include <memory>
 #include "user.h"
 #include "mainmenu.h"
 #include "gamedetailpage.h"
 #include "editprofilepage.h"
-#include "GameWidget.h"
-#include "room.h"
+#include "GameWidget/GameWidget.h"
+#include "Dialogs/waitingroomdialog.h"
+#include "../Models/room.h"
 
 class ClientManager;
 
@@ -44,19 +47,20 @@ private slots:
     void onLeaveGame();
 
 private:
+    void showGameWidget(int boardSize = 5);
+
     Ui::MainMenuWindow *ui;
-    user* currentUser;
-    ClientManager* clientManager;
+    user* currentUser;  // ✅ نگهداری raw pointer (مدیریت توسط Loginwindow)
+    QPointer<ClientManager> clientManager;
 
     MainMenu *mainMenuWidget;
     GameDetailPage *gameDetailPage;
     EditProfilePage *editProfilePage;
 
-    GameWidget* m_gameWidget = nullptr;
+    QPointer<GameWidget> m_gameWidget;
+    QPointer<WaitingRoomDialog> m_waitingDialog;
     Room m_currentRoom;
     bool m_isHost = false;
-
-    void showGameWidget();
 };
 
 #endif // MAINMENUWINDOW_H

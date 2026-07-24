@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QVBoxLayout>
+#include <memory>
 
 class ClientManager;
 class loginPage;
@@ -22,11 +23,14 @@ public:
     explicit Loginwindow(QWidget *parent = nullptr);
     ~Loginwindow() override;
 
+    user* getCurrentUser() const { return m_currentUser.get(); }
+
 private slots:
     void onConnectedToServer();
     void onServerDisconnected();
     void onServerError(const QString& error);
     void onMainMenuClosed();
+    void onLoginSuccessful(std::shared_ptr<user> loggedInUser);   // ← CHANGED
 
 private:
     Ui::Loginwindow *ui;
@@ -35,8 +39,7 @@ private:
     signuppage* m_signupPage;
     forgotpasspage* m_forgotPage;
 
-
-    user* m_currentUser = nullptr;
+    std::unique_ptr<user> m_currentUser;
     MainMenuWindow* m_mainMenuWindow = nullptr;
 
     bool tryConnectToServer();

@@ -204,8 +204,7 @@ QList<Room*> RoomManager::getAllRooms() const
     return result;
 }
 
-bool RoomManager::startGame(quint16 port, int boardSize)
-{
+bool RoomManager::startGame(quint16 port, int boardSize) {
     QMutexLocker locker(&mutex);
 
     if (!rooms.contains(port)) {
@@ -214,9 +213,7 @@ bool RoomManager::startGame(quint16 port, int boardSize)
     }
 
     Room* room = rooms.value(port);
-    if (!room) {
-        return false;
-    }
+    if (!room) return false;
 
     if (room->gameStarted) {
         qDebug() << "[RoomManager] startGame: Game already started";
@@ -228,26 +225,23 @@ bool RoomManager::startGame(quint16 port, int boardSize)
         return false;
     }
 
-    // ===== تغییر: make_unique → make_shared =====
-    room->gameController = std::make_shared<GameController>(boardSize, this);
-    // ===== پایان تغییر =====
+    QString hostName = room->hostUsername;
+    QString guestName = room->guestUsername;
 
-    room->gameController->setPlayerNames(room->hostUsername, room->guestUsername);
+    QMetaObject::invokeMethod(this, [this, port, boardSize, room, hostName, guestName]() {
+        room->gameController = std::make_shared<GameController>(boardSize, this);
+        room->gameController->setPlayerNames(hostName, guestName);
 
-    const Player* p1 = room->gameController->getPlayer(0);
-    const Player* p2 = room->gameController->getPlayer(1);
-    if (p1) {
-        const_cast<Player*>(p1)->setPlayerId(0);
-    }
-    if (p2) {
-        const_cast<Player*>(p2)->setPlayerId(1);
-    }
+        room->gameController->setPlayerId(0, 0);
+        room->gameController->setPlayerId(1, 1);
 
-    room->gameStarted = true;
-    room->status = RoomStatus::InProgress;
-    room->currentPlayerId = 0;
+        room->gameStarted = true;
+        room->status = RoomStatus::InProgress;
+        room->currentPlayerId = 0;
 
-    qDebug() << "[RoomManager] Game started in room" << port;
+        qDebug() << "[RoomManager] Game started in room" << port;
+    }, Qt::QueuedConnection);
+
     return true;
 }
 
@@ -305,9 +299,46 @@ bool RoomManager::processGameMove(quint16 port, const QPoint& p1, const QPoint& 
         qDebug() << "[RoomManager] Turn switched to player" << room->currentPlayerId;
     }
 
-    if (room->gameController->isGameOver()) {
+    BoardModel* boardModel = const_cast<BoardModel*>(room->gameController->getModel());
+    if (boardModel && boardModel->isGameOver()) {
         room->status = RoomStatus::Finished;
-        qDebug() << "[RoomManager] Game over in room" << port;
+        room->gameStarted = false;
+        qDebug() << "[RoomManager] ===== GAME OVER in room" << port << "=====";
+
+        const Player* p1 = room->gameController->getPlayer(0);
+        const Player* p2 = room->gameController->getPlayer(1);
+        int p1Score = p1 ? p1->getScore() : 0;
+        int p2Score = p2 ? p2->getScore() : 0;
+
+        int winner = -1;
+        if (p1Score > p2Score) {
+            winner = 0;
+        } else if (p2Score > p1Score) {
+            winner = 1;
+        } else {
+            winner = -1;
+        }
+
+        qDebug() << "[RoomManager] Final scores - P1:" << p1Score << "P2:" << p2Score << "Winner:" << winner;
+
+        QJsonObject gameOverData;
+        gameOverData["port"] = static_cast<int>(port);
+        gameOverData["winner"] = winner;
+        gameOverData["player1Score"] = p1Score;
+        gameOverData["player2Score"] = p2Score;
+
+        QString gameOverMsg = NetworkProtocol::buildMessage(NetworkConstants::MSG_GAME_OVER, gameOverData);
+
+        if (room->hostSocket) {
+            room->hostSocket->write(gameOverMsg.toUtf8());
+            room->hostSocket->flush();
+            qDebug() << "[RoomManager] Sent MSG_GAME_OVER to host";
+        }
+        if (room->guestSocket) {
+            room->guestSocket->write(gameOverMsg.toUtf8());
+            room->guestSocket->flush();
+            qDebug() << "[RoomManager] Sent MSG_GAME_OVER to guest";
+        }
     }
 
     return true;

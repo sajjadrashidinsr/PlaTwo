@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QTcpSocket>
 #include <QTimer>
+#include <memory>  // ← ADD THIS
 #include "network_constants.h"
 #include "network_protocol.h"
 #include "user.h"
@@ -30,7 +31,7 @@ public:
     void sendGetUser(const QString& username);
     void sendUpdateUser(const QString& oldUsername, const user& updatedUser);
 
-    // Room Management (Phase 2)
+    // Room Management
     void createRoom(const QString& roomName, quint16 port,
                     const GameSettings& settings, const QString& password = QString());
     void joinRoom(const QString& ip, quint16 port, const QString& password = QString());
@@ -47,15 +48,15 @@ signals:
     void disconnected();
     void error(const QString& errorMessage);
 
-    // Authentication responses
+    // Authentication responses (CHANGED: user* → std::shared_ptr<user>)
     void registerResponse(bool success, const QString& message);
-    void loginResponse(bool success, user* userData, const QString& message);
+    void loginResponse(bool success, std::shared_ptr<user> userData, const QString& message);
     void forgotPasswordResponse(bool success, const QString& message);
     void passwordChangedResponse(bool success, const QString& message);
-    void getUserResponse(bool success, user* userData, const QString& message);
+    void getUserResponse(bool success, std::shared_ptr<user> userData, const QString& message);
     void updateUserResponse(bool success, const QString& message);
 
-    // Room responses (Phase 2)
+    // Room responses
     void roomCreated(bool success, const Room& room, const QString& message);
     void roomJoined(bool success, const Room& room, const QString& message);
     void playerJoined(const QString& playerName);
@@ -83,7 +84,7 @@ private:
     QString buffer;
     bool awaitingResponse;
 
-    // Temporary room state (for callbacks)
+    // Temporary room state
     QString pendingRoomName;
     quint16 pendingPort;
     GameSettings pendingSettings;

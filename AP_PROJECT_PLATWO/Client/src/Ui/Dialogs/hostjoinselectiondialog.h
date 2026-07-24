@@ -15,6 +15,8 @@ public:
     explicit HostJoinSelectionDialog(QWidget *parent = nullptr);
     ~HostJoinSelectionDialog();
 
+    bool isHostSelected() const { return m_isHostSelected; }
+
 signals:
     void hostSelected();
     void joinSelected();
@@ -24,6 +26,7 @@ private slots:
 
 private:
     Ui::HostJoinSelectionDialog *ui;
+    bool m_isHostSelected = true;
 };
 
 #endif // HOSTJOINSELECTIONDIALOG_H

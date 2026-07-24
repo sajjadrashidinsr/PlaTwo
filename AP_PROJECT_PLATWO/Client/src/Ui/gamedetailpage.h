@@ -2,6 +2,8 @@
 #define GAMEDETAILPAGE_H
 
 #include <QWidget>
+#include <QPointer>
+#include <memory>  // ← ADD THIS
 #include "user.h"
 
 class ClientManager;
@@ -17,12 +19,13 @@ class GameDetailPage : public QWidget
     Q_OBJECT
 
 public:
-    explicit GameDetailPage(user* currentUser, ClientManager* client, QWidget *parent = nullptr);
+    explicit GameDetailPage(user* currentUser, QPointer<ClientManager> client, QWidget *parent = nullptr);
     ~GameDetailPage();
 
     void setUser(user* u);
     void setGameType(GameType type);
     void loadData();
+    void loadHistory();
 
 signals:
     void backToMenu();
@@ -31,12 +34,12 @@ signals:
 private slots:
     void onBackClicked();
     void onStartNewGameClicked();
-    void onGetUserResponse(bool success, user* userData, const QString& message);
+    void onGetUserResponse(bool success, std::shared_ptr<user> userData, const QString& message);  // ← CHANGED
 
 private:
     Ui::GameDetailPage *ui;
     user* currentUser;
-    ClientManager* clientManager;
+    QPointer<ClientManager> clientManager;
     GameType currentGameType;
 };
 

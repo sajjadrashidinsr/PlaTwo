@@ -1,29 +1,38 @@
 #include "gamedetailpage.h"
 #include "ui_gamedetailpage.h"
 #include "client_manager.h"
-#include "Models/room.h"
 #include "Dialogs/hostjoinselectiondialog.h"
 #include "Dialogs/hostgamedialog.h"
 #include "Dialogs/joingamedialog.h"
 #include "Dialogs/waitingroomdialog.h"
-#include <QInputDialog>
 #include <QMessageBox>
+#include <QDebug>
+#include <QHeaderView>
 
-GameDetailPage::GameDetailPage(user* currentUser, ClientManager* client, QWidget *parent)
+GameDetailPage::GameDetailPage(user* currentUser, QPointer<ClientManager> client, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::GameDetailPage)
     , currentUser(currentUser)
     , clientManager(client)
+    , currentGameType(GameType::DotsAndBoxes)
 {
+    qDebug() << "[GameDetailPage] Constructor started";
     ui->setupUi(this);
 
-    connect(ui->backButton, &QPushButton::clicked, this, &GameDetailPage::onBackClicked);
+    if (ui->historyTable) {
+        ui->historyTable->horizontalHeader()->setStretchLastSection(true);
+        ui->historyTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        ui->historyTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    }
 
+    connect(ui->backButton, &QPushButton::clicked, this, &GameDetailPage::onBackClicked);
     connect(ui->startNewGameButton, &QPushButton::clicked, this, &GameDetailPage::onStartNewGameClicked);
 
-    connect(clientManager, &ClientManager::getUserResponse,
-            this, &GameDetailPage::onGetUserResponse);
+    if (clientManager) {
+        connect(clientManager, &ClientManager::getUserResponse, this, &GameDetailPage::onGetUserResponse);
+    }
 
+    qDebug() << "[GameDetailPage] Constructor finished";
 }
 
 GameDetailPage::~GameDetailPage()
@@ -33,113 +42,142 @@ GameDetailPage::~GameDetailPage()
 
 void GameDetailPage::setUser(user* u)
 {
+    qDebug() << "[GameDetailPage] setUser called";
     currentUser = u;
     if (currentUser) {
-        loadData();
+        loadHistory();
     }
 }
 
 void GameDetailPage::setGameType(GameType type)
 {
+    qDebug() << "[GameDetailPage] setGameType called, type:" << static_cast<int>(type);
+    if (!ui) return;
     currentGameType = type;
     QString gameName;
     switch(type) {
     case GameType::DotsAndBoxes: gameName = "Dots and Boxes"; break;
     case GameType::NineMensMorris: gameName = "Nine Men's Morris"; break;
     case GameType::Fanorona: gameName = "Fanorona"; break;
+    default: gameName = "Unknown"; break;
     }
-    ui->titleLabel->setText(gameName + " - Details");
+    if (ui->titleLabel) {
+        ui->titleLabel->setText(gameName + " - Details");
+    }
 }
 
 void GameDetailPage::loadData()
 {
-    if (!currentUser || !clientManager) return;
-
-    //clientManager->sendGetUser(currentUser->username);
-
+    qDebug() << "[GameDetailPage] loadData called";
+    if (!ui || !currentUser || !clientManager) {
+        qDebug() << "[GameDetailPage] loadData: ui, currentUser or clientManager is null!";
+        return;
+    }
+    if (!clientManager->isConnected()) {
+        qDebug() << "[GameDetailPage] loadData: not connected to server";
+        return;
+    }
+    clientManager->sendGetUser(currentUser->username);
 }
 
-void GameDetailPage::onGetUserResponse(bool success, user* userData, const QString& message) {
-
-    Q_UNUSED(message);
+void GameDetailPage::onGetUserResponse(bool success, std::shared_ptr<user> userData, const QString& message)
+{
+    qDebug() << "[GameDetailPage] onGetUserResponse called, success:" << success;
 
     if (!success || !userData) {
+        qDebug() << "[GameDetailPage] Failed to get user data:" << message;
+        return;
+    }
+
+    if (currentUser) {
+        *currentUser = *userData;  // Copy data, shared_ptr will auto-delete
+    }
+    loadHistory();
+}
+
+void GameDetailPage::loadHistory()
+{
+    qDebug() << "[GameDetailPage] loadHistory called";
+
+    if (!ui || !currentUser || !ui->historyTable) {
+        qDebug() << "[GameDetailPage] loadHistory: ui, currentUser or historyTable is null!";
         return;
     }
 
     int score = 0;
     switch(currentGameType) {
-    case GameType::DotsAndBoxes: score = userData->dotsAndBoxesScore; break;
-    case GameType::NineMensMorris: score = userData->nineMensMorrisScore; break;
-    case GameType::Fanorona: score = userData->fanoronaScore; break;
+    case GameType::DotsAndBoxes:
+        score = currentUser->dotsAndBoxesScore;
+        break;
+    case GameType::NineMensMorris:
+        score = currentUser->nineMensMorrisScore;
+        break;
+    case GameType::Fanorona:
+        score = currentUser->fanoronaScore;
+        break;
+    default:
+        score = 0;
+        break;
     }
     ui->scoreLabel->setText("Score: " + QString::number(score));
 
-    const QList<GameRecord>& history = userData->history;
+    ui->historyTable->clearContents();
+    ui->historyTable->setRowCount(0);
+
+    const QList<GameRecord>& history = currentUser->history;
     ui->historyTable->setRowCount(history.size());
+
     for (int i = 0; i < history.size(); ++i) {
         const GameRecord& rec = history.at(i);
         ui->historyTable->setItem(i, 0, new QTableWidgetItem(rec.opponentUsername));
         ui->historyTable->setItem(i, 1, new QTableWidgetItem(rec.date));
         ui->historyTable->setItem(i, 2, new QTableWidgetItem(rec.role));
-        ui->historyTable->setItem(i, 3, new QTableWidgetItem(rec.winner));
+
+        QTableWidgetItem* winnerItem = new QTableWidgetItem(rec.winner);
+        if (rec.winner == currentUser->username) {
+            winnerItem->setBackground(QColor(76, 175, 80, 100));
+            winnerItem->setForeground(QColor(0, 100, 0));
+        } else if (rec.winner == "Draw") {
+            winnerItem->setBackground(QColor(255, 193, 7, 100));
+            winnerItem->setForeground(QColor(150, 100, 0));
+        } else {
+            winnerItem->setBackground(QColor(244, 67, 54, 100));
+            winnerItem->setForeground(QColor(150, 0, 0));
+        }
+        ui->historyTable->setItem(i, 3, winnerItem);
         ui->historyTable->setItem(i, 4, new QTableWidgetItem(QString::number(rec.finalScore)));
     }
 
-
+    ui->historyTable->resizeColumnsToContents();
+    qDebug() << "[GameDetailPage] loadHistory finished, rows:" << history.size();
 }
-
 
 void GameDetailPage::onBackClicked()
 {
+    qDebug() << "[GameDetailPage] onBackClicked";
     emit backToMenu();
 }
 
 void GameDetailPage::onStartNewGameClicked()
 {
+    qDebug() << "[GameDetailPage] onStartNewGameClicked";
+
+    if (!clientManager) {
+        QMessageBox::critical(this, "Error", "Client manager not available.");
+        return;
+    }
+
+    if (!clientManager->isConnected()) {
+        QMessageBox::warning(this, "Connection Error",
+                             "Not connected to server. Please check the server is running.");
+        return;
+    }
+
     HostJoinSelectionDialog selection(this);
-    connect(&selection, &HostJoinSelectionDialog::hostSelected, this, [this]() {
-        HostGameDialog hostDlg(this);
-        hostDlg.setClientManager(clientManager);  // Set client manager
+    int res = selection.exec();
 
-        connect(&hostDlg, &HostGameDialog::roomCreationSuccess,
-                this, [this](const Room& room) {
-                    // Room created successfully, open waiting room as host
-                    WaitingRoomDialog* waiting = new WaitingRoomDialog(true, room, this);
-                    waiting->setAttribute(Qt::WA_DeleteOnClose);
-                    waiting->setClientManager(clientManager);
-                    waiting->show();
-                });
-
-        connect(&hostDlg, &HostGameDialog::roomCreationFailed,
-                this, [](const QString& error) {
-                    // Error already shown in dialog, but we could log
-                    qDebug() << "Room creation failed:" << error;
-                });
-
-        hostDlg.exec();
-    });
-
-    connect(&selection, &HostJoinSelectionDialog::joinSelected, this, [this]() {
-        JoinGameDialog joinDlg(this);
-        joinDlg.setClientManager(clientManager);  // Set client manager
-
-        connect(&joinDlg, &JoinGameDialog::joinSuccess,
-                this, [this](const Room& room) {
-                    // Joined successfully, open waiting room as guest
-                    WaitingRoomDialog* waiting = new WaitingRoomDialog(false, room, this);
-                    waiting->setAttribute(Qt::WA_DeleteOnClose);
-                    waiting->setClientManager(clientManager);
-                    waiting->show();
-                });
-
-        connect(&joinDlg, &JoinGameDialog::joinFailed,
-                this, [](const QString& error) {
-                    qDebug() << "Join failed:" << error;
-                });
-
-        joinDlg.exec();
-    });
-
-    selection.exec();
+    if (res == QDialog::Accepted) {
+        bool isHost = selection.isHostSelected();
+        emit startNewGame(currentGameType, isHost);
+    }
 }

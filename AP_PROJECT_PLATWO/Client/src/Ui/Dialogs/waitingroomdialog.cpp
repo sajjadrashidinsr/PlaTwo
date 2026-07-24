@@ -20,6 +20,14 @@ WaitingRoomDialog::WaitingRoomDialog(bool isHost, const Room& room, QWidget *par
 
     connect(ui->copyButton, &QPushButton::clicked, this, &WaitingRoomDialog::onCopyAddressClicked);
     connect(ui->leaveButton, &QPushButton::clicked, this, &WaitingRoomDialog::onLeaveClicked);
+    connect(ui->startGameButton, &QPushButton::clicked, this, &WaitingRoomDialog::onStartGameClicked);
+    if (m_isHost) {
+        ui->startGameButton->setVisible(true);
+        ui->startGameButton->setEnabled(false);
+        }
+    else {
+        ui->startGameButton->setVisible(false);
+    }
 }
 
 WaitingRoomDialog::~WaitingRoomDialog()
@@ -37,6 +45,9 @@ void WaitingRoomDialog::setClientManager(ClientManager* client)
                 this, &WaitingRoomDialog::onPlayerLeft);
         connect(m_clientManager, &ClientManager::roomError,
                 this, &WaitingRoomDialog::onRoomError);
+
+        connect(m_clientManager, &ClientManager::gameStarted,
+                this, &WaitingRoomDialog::onGameStarted);
     }
 }
 
@@ -98,6 +109,26 @@ void WaitingRoomDialog::onLeaveClicked()
     accept();
 }
 
+void WaitingRoomDialog::onStartGameClicked()
+{
+    qDebug() << "[WaitingRoom] Start Game button clicked!";
+    qDebug() << "[WaitingRoom] isHost:" << m_isHost;
+    qDebug() << "[WaitingRoom] hasGuest:" << m_room.hasGuest();
+    qDebug() << "[WaitingRoom] port:" << m_room.port;
+
+    if (m_clientManager && m_room.hasGuest()) {
+        int boardSize = m_room.gameSettings.boardSize;
+        qDebug() << "[WaitingRoom] Sending sendGameStart with boardSize:" << boardSize;
+        m_clientManager->sendGameStart(m_room.port, boardSize);
+
+        ui->startGameButton->setEnabled(false);
+        ui->startGameButton->setText("Starting...");
+        ui->statusLabel->setText("Starting game...");
+    } else {
+        QMessageBox::warning(this, "Cannot Start", "Waiting for a guest to join.");
+    }
+}
+
 void WaitingRoomDialog::onPlayerJoined(const QString& playerName)
 {
     qDebug() << "[WaitingRoom] Player joined:" << playerName;
@@ -105,6 +136,7 @@ void WaitingRoomDialog::onPlayerJoined(const QString& playerName)
     updateInfo();
     if (m_isHost) {
         ui->statusLabel->setText("Guest " + playerName + " has joined! Ready to start game.");
+        ui->startGameButton->setEnabled(true);
     }
 
 }
@@ -117,6 +149,7 @@ void WaitingRoomDialog::onPlayerLeft(const QString& playerName)
         updateInfo();
         if (m_isHost) {
             ui->statusLabel->setText("Guest " + playerName + " left. Waiting for a new guest...");
+            ui->startGameButton->setEnabled(false);
         }
     }
 
@@ -126,4 +159,16 @@ void WaitingRoomDialog::onRoomError(const QString& error)
 {
     QMessageBox::critical(this, "Room Error", error);
     reject();
+}
+
+void WaitingRoomDialog::onGameStarted(const QJsonObject& data)
+{
+    qDebug() << "[WaitingRoom] Game started received from server";
+
+    int boardSize = data["boardSize"].toInt(5);
+    m_startedWithBoardSize = boardSize;
+
+    qDebug() << "[WaitingRoom] Board size:" << boardSize;
+    emit startGame(boardSize);
+    this->hide();
 }

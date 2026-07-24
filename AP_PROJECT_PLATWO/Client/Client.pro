@@ -50,6 +50,7 @@ HEADERS += \
     src/Ui/GameWidget/GameBoard.h \
     src/Ui/GameWidget/GameWidget.h
 
+
 FORMS += \
     src/Ui/Dialogs/hostgamedialog.ui \
     src/Ui/Dialogs/hostjoinselectiondialog.ui \

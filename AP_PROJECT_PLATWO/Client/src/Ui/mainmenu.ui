@@ -298,6 +298,9 @@
              </item>
              <item>
               <widget class="QPushButton" name="btnGameNineMensMorris">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
                <property name="minimumSize">
                 <size>
                  <width>180</width>
@@ -335,6 +338,9 @@
              </item>
              <item>
               <widget class="QPushButton" name="btnGameFanorona">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
                <property name="minimumSize">
                 <size>
                  <width>180</width>

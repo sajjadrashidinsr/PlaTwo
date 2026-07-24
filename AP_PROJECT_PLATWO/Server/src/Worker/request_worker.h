@@ -5,6 +5,8 @@
 #include <QTcpSocket>
 #include <QJsonObject>
 #include <QString>
+#include <QPointer>
+#include <memory>
 #include "network_constants.h"
 #include "network_protocol.h"
 #include "storage_manager.h"
@@ -16,8 +18,8 @@ class RequestWorker : public QRunnable {
 public:
     RequestWorker(QTcpSocket* clientSocket,
                   const QString& message,
-                  storage_manager* storage,
-                  RoomManager* roomManager,
+                  std::shared_ptr<storage_manager> storage,
+                  std::shared_ptr<RoomManager> roomManager,
                   QObject* parent = nullptr);
 
     ~RequestWorker();
@@ -41,17 +43,16 @@ private:
     void handleCreateRoom(const QJsonObject& data);
     void handleJoinRoom(const QJsonObject& data);
     void handleLeaveRoom(const QJsonObject& data);
-
     void handleGameStart(const QJsonObject& data);
     void handleGameMove(const QJsonObject& data);
     void handleGameAbort(const QJsonObject& data);
     void handleGameReady(const QJsonObject& data);
 
-    QTcpSocket* socket;
+    QPointer<QTcpSocket> socket;                              // ✅
     QString messageBuffer;
-    storage_manager* storageManager;
-    RoomManager* roomManager;
-    QObject* parentObject;
+    std::shared_ptr<storage_manager> storageManager;         // ✅
+    std::shared_ptr<RoomManager> roomManager;                // ✅
+    QPointer<QObject> parentObject;                          // ✅
 };
 
 #endif // REQUEST_WORKER_H

@@ -24,46 +24,21 @@ GameBoard::~GameBoard()
 {
 }
 
-void GameBoard::setBoardSize(int size)
-{
-    if (size < 3) size = 3;
-    if (size > 10) size = 10;
-    m_boardSize = size;
-    clearBoard();
-    update();
-}
-
-void GameBoard::clearBoard()
-{
-    m_horizontalLines.resize(m_boardSize);
-    for (int row = 0; row < m_boardSize; ++row) {
-        m_horizontalLines[row].fill(INVALID_PLAYER, m_boardSize - 1);
-    }
-
-    m_verticalLines.resize(m_boardSize - 1);
-    for (int row = 0; row < m_boardSize - 1; ++row) {
-        m_verticalLines[row].fill(INVALID_PLAYER, m_boardSize);
-    }
-
-    m_boxes.resize(m_boardSize - 1);
-    for (int row = 0; row < m_boardSize - 1; ++row) {
-        m_boxes[row].fill(INVALID_PLAYER, m_boardSize - 1);
-    }
-}
-
 void GameBoard::updateBoard(const QJsonObject& state)
 {
     if (state.isEmpty()) return;
 
+    if (state.contains("boardSize")) {
+        int size = state["boardSize"].toInt();
+        if (size >= 3 && size <= 10 && size != m_boardSize) {
+            m_boardSize = size;
+            clearBoard();
+        }
+    }
+
     QJsonArray horizontalLines = state["horizontalLines"].toArray();
     QJsonArray verticalLines = state["verticalLines"].toArray();
     QJsonArray boxes = state["boxes"].toArray();
-
-    int size = state["boardSize"].toInt();
-    if (size != m_boardSize) {
-        m_boardSize = size;
-        clearBoard();
-    }
 
     for (int row = 0; row < horizontalLines.size() && row < m_boardSize; ++row) {
         QJsonArray rowData = horizontalLines[row].toArray();
@@ -191,28 +166,32 @@ void GameBoard::drawLines(QPainter& painter, int lineWidth)
 
     for (int row = 0; row < m_boardSize; ++row) {
         for (int col = 0; col < m_boardSize - 1; ++col) {
-            int playerId = m_horizontalLines[row][col];
-            if (playerId != INVALID_PLAYER) {
-                pen.setColor(playerId == 0 ? player1Color : player2Color);
-                painter.setPen(pen);
+            if (row < m_horizontalLines.size() && col < m_horizontalLines[row].size()) {
+                int playerId = m_horizontalLines[row][col];
+                if (playerId != INVALID_PLAYER) {
+                    pen.setColor(playerId == 0 ? player1Color : player2Color);
+                    painter.setPen(pen);
 
-                QPoint p1 = gridToPixel(QPoint(row, col), dotSpacing, padding);
-                QPoint p2 = gridToPixel(QPoint(row, col + 1), dotSpacing, padding);
-                painter.drawLine(p1, p2);
+                    QPoint p1 = gridToPixel(QPoint(row, col), dotSpacing, padding);
+                    QPoint p2 = gridToPixel(QPoint(row, col + 1), dotSpacing, padding);
+                    painter.drawLine(p1, p2);
+                }
             }
         }
     }
 
     for (int row = 0; row < m_boardSize - 1; ++row) {
         for (int col = 0; col < m_boardSize; ++col) {
-            int playerId = m_verticalLines[row][col];
-            if (playerId != INVALID_PLAYER) {
-                pen.setColor(playerId == 0 ? player1Color : player2Color);
-                painter.setPen(pen);
+            if (row < m_verticalLines.size() && col < m_verticalLines[row].size()) {
+                int playerId = m_verticalLines[row][col];
+                if (playerId != INVALID_PLAYER) {
+                    pen.setColor(playerId == 0 ? player1Color : player2Color);
+                    painter.setPen(pen);
 
-                QPoint p1 = gridToPixel(QPoint(row, col), dotSpacing, padding);
-                QPoint p2 = gridToPixel(QPoint(row + 1, col), dotSpacing, padding);
-                painter.drawLine(p1, p2);
+                    QPoint p1 = gridToPixel(QPoint(row, col), dotSpacing, padding);
+                    QPoint p2 = gridToPixel(QPoint(row + 1, col), dotSpacing, padding);
+                    painter.drawLine(p1, p2);
+                }
             }
         }
     }
@@ -228,22 +207,24 @@ void GameBoard::drawBoxes(QPainter& painter, int padding)
 
     for (int row = 0; row < m_boardSize - 1; ++row) {
         for (int col = 0; col < m_boardSize - 1; ++col) {
-            int playerId = m_boxes[row][col];
-            if (playerId != INVALID_PLAYER) {
-                QPoint topLeft = gridToPixel(QPoint(row, col), dotSpacing, padding);
-                QPoint bottomRight = gridToPixel(QPoint(row + 1, col + 1), dotSpacing, padding);
+            if (row < m_boxes.size() && col < m_boxes[row].size()) {
+                int playerId = m_boxes[row][col];
+                if (playerId != INVALID_PLAYER) {
+                    QPoint topLeft = gridToPixel(QPoint(row, col), dotSpacing, padding);
+                    QPoint bottomRight = gridToPixel(QPoint(row + 1, col + 1), dotSpacing, padding);
 
-                QRect boxRect(topLeft.x() + padding / 2,
-                              topLeft.y() + padding / 2,
-                              bottomRight.x() - topLeft.x() - padding,
-                              bottomRight.y() - topLeft.y() - padding);
+                    QRect boxRect(topLeft.x() + padding / 2,
+                                  topLeft.y() + padding / 2,
+                                  bottomRight.x() - topLeft.x() - padding,
+                                  bottomRight.y() - topLeft.y() - padding);
 
-                QColor color = (playerId == 0) ? player1Color : player2Color;
-                color.setAlpha(100);
+                    QColor color = (playerId == 0) ? player1Color : player2Color;
+                    color.setAlpha(100);
 
-                painter.setPen(Qt::NoPen);
-                painter.setBrush(QBrush(color));
-                painter.drawRect(boxRect);
+                    painter.setPen(Qt::NoPen);
+                    painter.setBrush(QBrush(color));
+                    painter.drawRect(boxRect);
+                }
             }
         }
     }
@@ -282,7 +263,7 @@ void GameBoard::calculateGridMetrics(int& dotSpacing, int& dotRadius,
     padding = qMax(20, static_cast<int>(availableSize * 0.1));
 
     int totalSpacing = availableSize - 2 * padding;
-    dotSpacing = totalSpacing / (m_boardSize - 1);
+    dotSpacing = totalSpacing / (m_boardSize - 1 > 0 ? m_boardSize - 1 : 1);
 
     dotRadius = qMax(4, dotSpacing / 12);
     lineWidth = qMax(3, dotSpacing / 8);
@@ -310,7 +291,7 @@ QPair<QPoint, QPoint> GameBoard::findNearestLine(const QPoint& pixelPos,
                                                  int dotSpacing, int padding,
                                                  int lineWidth) const
 {
-    int threshold = lineWidth * 4;
+    int threshold = qMax(lineWidth * 4, 15);
 
     for (int row = 0; row < m_boardSize; ++row) {
         for (int col = 0; col < m_boardSize - 1; ++col) {
@@ -318,8 +299,10 @@ QPair<QPoint, QPoint> GameBoard::findNearestLine(const QPoint& pixelPos,
             QPoint p2 = gridToPixel(QPoint(row, col + 1), dotSpacing, padding);
 
             if (isNearLine(pixelPos, p1, p2, threshold)) {
-                if (m_horizontalLines[row][col] == INVALID_PLAYER) {
-                    return QPair<QPoint, QPoint>(QPoint(row, col), QPoint(row, col + 1));
+                if (row < m_horizontalLines.size() && col < m_horizontalLines[row].size()) {
+                    if (m_horizontalLines[row][col] == INVALID_PLAYER) {
+                        return QPair<QPoint, QPoint>(QPoint(row, col), QPoint(row, col + 1));
+                    }
                 }
             }
         }
@@ -331,8 +314,10 @@ QPair<QPoint, QPoint> GameBoard::findNearestLine(const QPoint& pixelPos,
             QPoint p2 = gridToPixel(QPoint(row + 1, col), dotSpacing, padding);
 
             if (isNearLine(pixelPos, p1, p2, threshold)) {
-                if (m_verticalLines[row][col] == INVALID_PLAYER) {
-                    return QPair<QPoint, QPoint>(QPoint(row, col), QPoint(row + 1, col));
+                if (row < m_verticalLines.size() && col < m_verticalLines[row].size()) {
+                    if (m_verticalLines[row][col] == INVALID_PLAYER) {
+                        return QPair<QPoint, QPoint>(QPoint(row, col), QPoint(row + 1, col));
+                    }
                 }
             }
         }
@@ -362,5 +347,33 @@ bool GameBoard::isNearLine(const QPoint& point, const QPoint& p1,
         int projX = p1.x() + static_cast<int>(t * dx);
         int projY = p1.y() + static_cast<int>(t * dy);
         return (point - QPoint(projX, projY)).manhattanLength() < threshold;
+    }
+}
+
+void GameBoard::setBoardSize(int size)
+{
+    if (size < 3) size = 3;
+    if (size > 10) size = 10;
+    m_boardSize = size;
+    clearBoard();
+    update();
+}
+
+void GameBoard::clearBoard()
+{
+    m_horizontalLines.resize(m_boardSize);
+    for (int row = 0; row < m_boardSize; ++row) {
+        m_horizontalLines[row].resize(m_boardSize - 1);
+        m_horizontalLines[row].fill(INVALID_PLAYER);
+    }
+    m_verticalLines.resize(m_boardSize - 1);
+    for (int row = 0; row < m_boardSize - 1; ++row) {
+        m_verticalLines[row].resize(m_boardSize);
+        m_verticalLines[row].fill(INVALID_PLAYER);
+    }
+    m_boxes.resize(m_boardSize - 1);
+    for (int row = 0; row < m_boardSize - 1; ++row) {
+        m_boxes[row].resize(m_boardSize - 1);
+        m_boxes[row].fill(INVALID_PLAYER);
     }
 }

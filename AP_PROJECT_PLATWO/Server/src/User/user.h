@@ -16,6 +16,7 @@ class user {
 public:
     user() = default;
     user(const user& other) = default;
+    user& operator=(const user& other) = default;
 
     QString name;
     QString username;

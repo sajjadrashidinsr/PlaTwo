@@ -22,15 +22,17 @@ public:
 
 signals:
     void leaveRoom();
+    void startGame(int boardSize);
 
 private slots:
     void onCopyAddressClicked();
     void onLeaveClicked();
+    void onStartGameClicked();
 
-    // Phase 2: Dynamic updates
     void onPlayerJoined(const QString& playerName);
     void onPlayerLeft(const QString& playerName);
     void onRoomError(const QString& error);
+    void onGameStarted(const QJsonObject& data);
 
 private:
     void updateInfo();
@@ -39,6 +41,7 @@ private:
     bool m_isHost;
     Room m_room;
     ClientManager* m_clientManager = nullptr;
+    int m_startedWithBoardSize = 5;
 };
 
 #endif // WAITINGROOMDIALOG_H

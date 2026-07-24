@@ -5,12 +5,9 @@
 ThreadedServer::ThreadedServer(QObject* parent)
     : QObject(parent)
     , tcpServer(nullptr)
-    , storageManager(nullptr)
-    , roomManager(nullptr)
+    , storageManager(std::make_shared<storage_manager>())  // ✅
+    , roomManager(std::make_shared<RoomManager>(this))     // ✅
     , threadPool(nullptr) {
-
-    storageManager = new storage_manager();
-    roomManager = new RoomManager(this);
 
     tcpServer = new QTcpServer(this);
 
@@ -20,20 +17,13 @@ ThreadedServer::ThreadedServer(QObject* parent)
 
     connect(tcpServer, &QTcpServer::newConnection,
             this, &ThreadedServer::onNewConnection);
-
-    qDebug() << "[Server] ThreadPool created with max threads:" << threadPool->maxThreadCount();
-    qDebug() << "[Server] Storage manager initialized";
-    qDebug() << "[Server] RoomManager initialized";
 }
+
 
 ThreadedServer::~ThreadedServer() {
     stopServer();
-    if (storageManager) {
-        delete storageManager;
-        storageManager = nullptr;
-    }
-    qDebug() << "[Server] Server destroyed";
 }
+
 
 bool ThreadedServer::startServer(quint16 port) {
     if (tcpServer->listen(QHostAddress::Any, port)) {
@@ -122,9 +112,7 @@ void ThreadedServer::onClientDisconnected() {
 
 void ThreadedServer::onReadyRead() {
     QTcpSocket* client = qobject_cast<QTcpSocket*>(sender());
-    if (!client) {
-        return;
-    }
+    if (!client) return;
 
     QByteArray data = client->readAll();
 
@@ -137,23 +125,14 @@ void ThreadedServer::onReadyRead() {
         clientBuffer[client].remove(0, separatorPos + 1);
 
         if (!message.isEmpty()) {
-            qDebug() << "[Main Thread] Received message from client, length:" << message.length();
-
             RequestWorker* worker = new RequestWorker(
                 client,
                 message,
-                storageManager,
-                roomManager,
+                storageManager,   // shared_ptr
+                roomManager,      // shared_ptr
                 this
                 );
-
             threadPool->start(worker);
-
-            QString clientAddress = client->peerAddress().toString();
-
-            qDebug() << "[Main Thread] Task submitted to thread pool."
-                     << "Client:" << clientAddress
-                     << "Active threads:" << threadPool->activeThreadCount();
         }
     }
 }

@@ -17,7 +17,8 @@ HostJoinSelectionDialog::~HostJoinSelectionDialog()
 
 void HostJoinSelectionDialog::onContinueClicked()
 {
-    if (ui->hostRadio->isChecked())
+    m_isHostSelected = ui->hostRadio->isChecked();
+    if (m_isHostSelected)
         emit hostSelected();
     else
         emit joinSelected();

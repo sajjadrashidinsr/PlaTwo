@@ -2,6 +2,7 @@
 #define EDITPROFILEPAGE_H
 
 #include <QWidget>
+#include <QPointer>
 #include "user.h"
 
 class ClientManager;
@@ -15,7 +16,7 @@ class EditProfilePage : public QWidget
     Q_OBJECT
 
 public:
-    explicit EditProfilePage(user* currentUser, ClientManager* client, QWidget *parent = nullptr);
+    explicit EditProfilePage(user* currentUser, QPointer<ClientManager> client, QWidget *parent = nullptr);
     ~EditProfilePage();
 
     void setUser(user* u);
@@ -33,7 +34,7 @@ private slots:
 private:
     Ui::EditProfilePage *ui;
     user* currentUser;
-    ClientManager* clientManager;
+    QPointer<ClientManager> clientManager;
 
     bool validateInputs();
 };
